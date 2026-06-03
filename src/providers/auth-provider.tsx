@@ -21,8 +21,8 @@ export function AuthProvider({ children }: { children: ReactNode}) {
   function remove() {
     localStorage.removeItem(`${LOCAL_STORAGE_KEY}:user`)
     localStorage.removeItem(`${LOCAL_STORAGE_KEY}:token`)
-    delete api.defaults.headers.common["Authorization"]
     
+    delete api.defaults.headers.common["Authorization"]
     setSession(null);
   }
 
