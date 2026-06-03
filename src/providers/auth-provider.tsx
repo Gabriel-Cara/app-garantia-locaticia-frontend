@@ -1,0 +1,54 @@
+import { useState, useEffect, type ReactNode } from "react";
+import { api } from "@/services/api";
+import { AuthContext } from "./auth-context";
+import type { AuthSession } from "@/types/auth";
+
+const LOCAL_STORAGE_KEY = "@doculoc"
+
+export function AuthProvider({ children }: { children: ReactNode}) {
+  const [session, setSession] = useState<null | AuthSession>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  function save(data: AuthSession) {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}:user`, JSON.stringify(data.user))
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}:token`, data.token)
+    
+    api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`
+
+    setSession(data);
+  }
+
+  function remove() {
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY}:user`)
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY}:token`)
+    delete api.defaults.headers.common["Authorization"]
+    
+    setSession(null);
+  }
+
+  function loadUser() {
+    const user = localStorage.getItem(`${LOCAL_STORAGE_KEY}:user`)
+    const token = localStorage.getItem(`${LOCAL_STORAGE_KEY}:token`)
+
+    if(token && user) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`
+
+      setSession({
+        token,
+        user: JSON.parse(user)
+      })
+    }
+
+    setIsLoading(false);
+  }
+
+  useEffect(() => {
+    loadUser()
+  }, [])
+
+  return (
+    <AuthContext.Provider value={{ session, isLoading, save, remove }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
