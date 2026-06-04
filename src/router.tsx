@@ -13,6 +13,8 @@ import { ApplicationDetailPage } from "./app/modules/applications/pages/applicat
 import { ContractDataPage } from "./app/modules/applications/pages/contract-data";
 import { ContestApplicationPage } from "./app/modules/applications/pages/contest-application";
 import { RealEstatesPage } from "./app/modules/admin/pages/real-estates";
+import ForgotPasswordPage from "./app/modules/auth/pages/forgot-password";
+import ResetPasswordPage from "./app/modules/auth/pages/reset-password";
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +33,14 @@ export const router = createBrowserRouter([
       {
         path: "sign-up",
         element: <RegisterPage />,
+      },
+      {
+        path: "forgot-password",
+        element: <ForgotPasswordPage />,
+      },
+      {
+        path: "reset-password",
+        element: <ResetPasswordPage />,
       },
     ],
   },

@@ -18,13 +18,13 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Mail, SquareAsterisk } from "lucide-react";
 import { signIn } from "@/api/sign-in";
 import { cn } from "@/lib/utils";
-import { z } from "zod";
 import { toast } from "sonner";
+import { z } from "zod";
 
 // Hooks
 import { useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
 import { useAuth } from "@/hooks/use-auth";
+import { useForm } from "react-hook-form";
 
 
 const signInForm = z.object({
@@ -42,12 +42,17 @@ export function LoginForm({
   const navigate = useNavigate();
   const { save } = useAuth();
 
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<SignInForm>({
+  const { register, handleSubmit, formState: { isSubmitting }, watch } = useForm<SignInForm>({
     defaultValues: {
       email: searchParams.get('email') || '',
       password: ''
     }
   })
+
+  const currentEmail = watch('email')
+  const forgotPasswordUrl = currentEmail 
+  ? `/forgot-password?email=${currentEmail}` 
+  : '/forgot-password';
 
   const { mutateAsync: login,  } = useMutation({
     mutationFn: signIn,
@@ -105,7 +110,7 @@ export function LoginForm({
           <div className="flex items-center justify-between">
             <FieldLabel htmlFor="password">Senha</FieldLabel>
             <Link
-              to="/"
+              to={forgotPasswordUrl}
               className="text-sm text-muted-foreground underline-offset-4 hover:underline"
             >
               Esqueci minha senha
