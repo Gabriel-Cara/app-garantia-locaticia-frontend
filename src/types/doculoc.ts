@@ -131,6 +131,35 @@ export type CreateApplicationResponse = {
   decision: DecisionResponse;
 };
 
+export type PendingConsultResponse = {
+  pending: true;
+  status: "PROCESSING";
+  consultLockId: string;
+  document: string;
+  documentType: DocumentType;
+  message: string;
+};
+
+export type ConsultStatusResponse =
+  | {
+      status: "PROCESSING";
+      consultLockId: string;
+      message: string;
+    }
+  | {
+      status: "FAILED";
+      message: string;
+    }
+  | {
+      status: "COMPLETED";
+      application: RentalApplication;
+      decision: DecisionResponse | null;
+    };
+
+export type CreateApplicationInitialResponse =
+  | CreateApplicationResponse
+  | PendingConsultResponse;
+
 export type ContractDataBody = {
   tenantName: string;
   tenantDocument: string;

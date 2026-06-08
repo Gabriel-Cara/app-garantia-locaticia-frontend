@@ -2,8 +2,10 @@ import { api } from "./api";
 import { onlyDigits } from "@/lib/format";
 import type {
   AdminDecision,
+  ConsultStatusResponse,
   ContractDataBody,
   CreateApplicationBody,
+  CreateApplicationInitialResponse,
   CreateApplicationResponse,
   ListApplicationsParams,
   ListApplicationsResponse,
@@ -31,11 +33,75 @@ function buildParams(params?: ListApplicationsParams) {
   return cleanParams;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function isPendingConsultResponse(
+  data: CreateApplicationInitialResponse,
+): data is Extract<CreateApplicationInitialResponse, { pending: true }> {
+  return "pending" in data && data.pending === true;
+}
+
+export async function getConsultStatus(consultLockId: string) {
+  const response = await api.get<ConsultStatusResponse>(
+    `/rental-applications/consults/${consultLockId}/status`,
+  );
+
+  return response.data;
+}
+
+async function waitForConsultResult(
+  consultLockId: string,
+): Promise<CreateApplicationResponse> {
+  const maxAttempts = 72;
+  const delayMs = 5000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const status = await getConsultStatus(consultLockId);
+
+    if (status.status === "COMPLETED") {
+      return {
+        application: status.application,
+        decision: status.decision ?? {
+          status: String(status.application.automaticDecision ?? "unknown"),
+          recommendation: String(
+            status.application.recommendation ?? "unknown",
+          ),
+        },
+      };
+    }
+
+    if (status.status === "FAILED") {
+      throw new Error(status.message || "A consulta falhou na Órago.");
+    }
+
+    await sleep(delayMs);
+  }
+
+  throw new Error(
+    "A análise ainda está em processamento. Tente atualizar a lista de consultas em alguns minutos.",
+  );
+}
+
+async function resolveCreateApplicationResponse(
+  data: CreateApplicationInitialResponse,
+): Promise<CreateApplicationResponse> {
+  if (isPendingConsultResponse(data)) {
+    return waitForConsultResult(data.consultLockId);
+  }
+
+  return data;
+}
+
 export async function listRentalApplications(params?: ListApplicationsParams) {
   const searchParams = buildParams(params);
-  const response = await api.get<ListApplicationsResponse>("/rental-applications", {
-    params: Object.fromEntries(searchParams),
-  });
+  const response = await api.get<ListApplicationsResponse>(
+    "/rental-applications",
+    {
+      params: Object.fromEntries(searchParams),
+    },
+  );
 
   return response.data;
 }
@@ -49,28 +115,37 @@ export async function getRentalApplication(applicationId: string) {
 }
 
 export async function createCpfApplication(body: CreateApplicationBody) {
-  const response = await api.post<CreateApplicationResponse>("/rental-applications/cpf", {
-    cpf: onlyDigits(body.document),
-    rentValue: body.rentValue,
-    condominiumValue: body.condominiumValue,
-    feesValue: body.feesValue,
-  });
+  const response = await api.post<CreateApplicationInitialResponse>(
+    "/rental-applications/cpf",
+    {
+      cpf: onlyDigits(body.document),
+      rentValue: body.rentValue,
+      condominiumValue: body.condominiumValue,
+      feesValue: body.feesValue,
+    },
+  );
 
-  return response.data;
+  return resolveCreateApplicationResponse(response.data);
 }
 
 export async function createCnpjApplication(body: CreateApplicationBody) {
-  const response = await api.post<CreateApplicationResponse>("/rental-applications/cnpj", {
-    cnpj: onlyDigits(body.document),
-    rentValue: body.rentValue,
-    condominiumValue: body.condominiumValue,
-    feesValue: body.feesValue,
-  });
+  const response = await api.post<CreateApplicationInitialResponse>(
+    "/rental-applications/cnpj",
+    {
+      cnpj: onlyDigits(body.document),
+      rentValue: body.rentValue,
+      condominiumValue: body.condominiumValue,
+      feesValue: body.feesValue,
+    },
+  );
 
-  return response.data;
+  return resolveCreateApplicationResponse(response.data);
 }
 
-export async function fillContractData(applicationId: string, body: ContractDataBody) {
+export async function fillContractData(
+  applicationId: string,
+  body: ContractDataBody,
+) {
   const response = await api.patch<{ application: RentalApplication }>(
     `/rental-applications/${applicationId}/contract-data`,
     {
@@ -84,10 +159,16 @@ export async function fillContractData(applicationId: string, body: ContractData
   return response.data.application;
 }
 
-export async function contestRentalApplication(applicationId: string, reason: string) {
-  const response = await api.post(`/rental-applications/${applicationId}/contest`, {
-    reason,
-  });
+export async function contestRentalApplication(
+  applicationId: string,
+  reason: string,
+) {
+  const response = await api.post(
+    `/rental-applications/${applicationId}/contest`,
+    {
+      reason,
+    },
+  );
 
   return response.data;
 }

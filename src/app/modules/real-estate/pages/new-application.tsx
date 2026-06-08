@@ -24,7 +24,11 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader, PageShell } from "@/app/modules/_components/page-shell";
 import { formatCurrency, onlyDigits } from "@/lib/format";
-import { getApiErrorMessage } from "@/services/api";
+import {
+  getApiErrorCode,
+  getApiErrorMessage,
+  getApiErrorStatus,
+} from "@/services/api";
 import {
   createCnpjApplication,
   createCpfApplication,
@@ -116,10 +120,31 @@ export function NewApplicationPage() {
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
+      const code = getApiErrorCode(error);
+      const status = getApiErrorStatus(error);
+
+      if (
+        code === "DOCUMENT_ALREADY_CONSULTED" ||
+        code === "DOCUMENT_CONSULT_IN_PROGRESS" ||
+        status === 409
+      ) {
+        form.setError("document", {
+          type: "server",
+          message:
+            "Este CPF/CNPJ já possui uma consulta cadastrada ou em processamento.",
+        });
+
+        toast.error("Documento já consultado", {
+          description:
+            "Não é permitido realizar uma nova consulta para o mesmo CPF ou CNPJ.",
+        });
+
+        return;
+      }
 
       toast.error(message, {
         description:
-          message.includes("sem consultas") || message.includes("402")
+          message.includes("sem consultas") || status === 402
             ? "Solicite ao admin a liberação de novos créditos ou ativação VIP."
             : undefined,
       });
@@ -259,8 +284,9 @@ export function NewApplicationPage() {
                 <ShieldCheck className="size-4" />
                 <AlertTitle>Consumo de crédito</AlertTitle>
                 <AlertDescription>
-                  Cada consulta consome 1 crédito. Se os créditos estiverem
-                  zerados, o backend bloqueará a operação automaticamente.
+                  Cada consulta consome 1 crédito. A análise pode levar alguns
+                  minutos enquanto a Órago processa os dados. Mantenha esta tela
+                  aberta até o resultado.
                 </AlertDescription>
               </Alert>
 
@@ -278,7 +304,9 @@ export function NewApplicationPage() {
                   ) : (
                     <Send className="size-4" />
                   )}
-                  {mutation.isPending ? "Consultando..." : "Consultar agora"}
+                  {mutation.isPending
+                    ? "Aguardando resultado da análise..."
+                    : "Consultar agora"}
                 </Button>
               </div>
             </form>
