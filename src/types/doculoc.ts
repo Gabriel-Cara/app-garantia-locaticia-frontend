@@ -59,6 +59,7 @@ export type RentalApplication = {
   rentValue?: string | number | null;
   condominiumValue?: string | number | null;
   feesValue?: string | number | null;
+  adhesionFee?: string | number | null;
   requestedExpense?: string | number | null;
   automaticDecision?: AutomaticDecision | null;
   recommendation?: Recommendation | null;
@@ -172,6 +173,7 @@ export type ContractDataBody = {
   propertyNeighborhood: string;
   propertyCity: string;
   propertyState: string;
+  adhesionFee: number;
 };
 
 export type Wallet = {

@@ -41,7 +41,7 @@ const newApplicationSchema = z
     document: z.string().min(11, "Informe um CPF ou CNPJ válido."),
     rentValue: z.number().positive("Informe o valor do aluguel."),
     condominiumValue: z.number().min(0, "Valor inválido."),
-    feesValue: z.number().min(0, "Valor inválido."),
+    feesValue: z.number().min(0, "Informe um valor de IPTU válido."),
   })
   .superRefine((data, context) => {
     const length = onlyDigits(data.document).length;
@@ -86,8 +86,8 @@ export function NewApplicationPage() {
   const documentType = form.watch("documentType");
   const rentValue = Number(form.watch("rentValue") || 0);
   const condominiumValue = Number(form.watch("condominiumValue") || 0);
-  const feesValue = Number(form.watch("feesValue") || 0);
-  const requestedExpense = rentValue + condominiumValue + feesValue;
+  const iptuValue = Number(form.watch("feesValue") || 0);
+  const requestedExpense = rentValue + condominiumValue + iptuValue;
 
   const mutation = useMutation({
     mutationFn: (values: NewApplicationForm) => {
@@ -192,7 +192,7 @@ export function NewApplicationPage() {
         <PageHeader
           eyebrow="Nova análise"
           title="Consultar garantia locatícia"
-          description="Informe CPF ou CNPJ e os valores do pacote locatício. A análise retorna se o perfil é recomendado ou não recomendado."
+          description="Informe CPF ou CNPJ e os valores de aluguel, condomínio e IPTU. A análise retorna se o perfil é recomendado ou não recomendado."
         />
       </div>
 
@@ -283,12 +283,13 @@ export function NewApplicationPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="feesValue">Taxas</Label>
+                  <Label htmlFor="feesValue">IPTU</Label>
                   <Input
                     id="feesValue"
                     type="number"
                     min="0"
                     step="0.01"
+                    placeholder="0,00"
                     className="h-12 rounded-2xl"
                     {...form.register("feesValue", { valueAsNumber: true })}
                   />
@@ -360,8 +361,8 @@ export function NewApplicationPage() {
                   </span>
                 </div>
                 <div className="flex min-w-0 items-center justify-between gap-3">
-                  <span>Taxas</span>
-                  <span className="shrink-0">{formatCurrency(feesValue)}</span>
+                  <span>IPTU</span>
+                  <span className="shrink-0">{formatCurrency(iptuValue)}</span>
                 </div>
               </div>
             </CardContent>

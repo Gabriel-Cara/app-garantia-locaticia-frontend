@@ -38,6 +38,7 @@ const contractDataSchema = z.object({
     .string()
     .min(2, "UF obrigatória.")
     .max(2, "Use a UF com 2 letras."),
+  adhesionFee: z.number().min(0, "Informe uma taxa de adesão válida."),
 });
 
 type ContractDataForm = z.infer<typeof contractDataSchema>;
@@ -65,6 +66,7 @@ export function ContractDataPage() {
       propertyNeighborhood: "",
       propertyCity: "",
       propertyState: "",
+      adhesionFee: 0,
     },
   });
 
@@ -93,6 +95,7 @@ export function ContractDataPage() {
       propertyNeighborhood: application.propertyNeighborhood ?? "",
       propertyCity: application.propertyCity ?? "",
       propertyState: application.propertyState ?? "",
+      adhesionFee: Number(application.adhesionFee ?? 0),
     });
   }, [application, form]);
 
@@ -339,6 +342,29 @@ export function ContractDataPage() {
               />
               <FieldError
                 message={form.formState.errors.propertyState?.message}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end" />
+        <Card className="bg-white/85 shadow-sm">
+          <CardHeader>
+            <CardTitle>Dados econômicos</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="adhesionFee">Taxa de adesão</Label>
+              <Input
+                id="adhesionFee"
+                type="number"
+                min="0"
+                step="0.01"
+                className="h-11 rounded-2xl"
+                {...form.register("adhesionFee", { valueAsNumber: true })}
+              />
+              <FieldError
+                message={form.formState.errors.adhesionFee?.message}
               />
             </div>
           </CardContent>

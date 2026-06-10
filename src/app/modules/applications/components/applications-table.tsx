@@ -146,7 +146,7 @@ export function ApplicationsTable({
         cell: ({ row }) => (
           <div>
             <div className="font-medium">{formatCurrency(row.original.requestedExpense)}</div>
-            <div className="text-xs text-muted-foreground">Aluguel + condomínio + taxas</div>
+            <div className="text-xs text-muted-foreground">Aluguel + condomínio + IPTU</div>
           </div>
         ),
       },
