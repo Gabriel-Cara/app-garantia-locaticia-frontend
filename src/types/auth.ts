@@ -6,6 +6,15 @@ export type RealEstateProfile = {
   cnpj?: string | null;
   phone?: string | null;
   responsibleName?: string | null;
+
+  zipCode?: string | null;
+  street?: string | null;
+  number?: string | null;
+  complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+
   createdAt?: string;
   updatedAt?: string;
 };

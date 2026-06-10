@@ -152,12 +152,12 @@ export function ApplicationsTable({
       },
       {
         accessorKey: "recommendation",
-        header: "Resultado",
+        header: "Órago",
         cell: ({ row }) => <RecommendationBadge recommendation={row.original.recommendation} />,
       },
       {
         accessorKey: "status",
-        header: "Status",
+        header: "Doculoc",
         cell: ({ row }) => <ApplicationStatusBadge status={row.original.status} />,
       },
       {

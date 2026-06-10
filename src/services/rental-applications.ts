@@ -37,10 +37,35 @@ function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function isPendingConsultResponse(
-  data: CreateApplicationInitialResponse,
-): data is Extract<CreateApplicationInitialResponse, { pending: true }> {
-  return "pending" in data && data.pending === true;
+function isPendingConsultResponse(data: unknown): data is {
+  pending?: boolean;
+  status?: string;
+  consultLockId: string;
+} {
+  if (!data || typeof data !== "object") return false;
+
+  const value = data as {
+    pending?: boolean;
+    status?: string;
+    consultLockId?: unknown;
+  };
+
+  return (
+    typeof value.consultLockId === "string" &&
+    (value.pending === true || value.status === "PROCESSING")
+  );
+}
+
+function isCreateApplicationResponse(
+  data: unknown,
+): data is CreateApplicationResponse {
+  if (!data || typeof data !== "object") return false;
+
+  const value = data as {
+    application?: unknown;
+  };
+
+  return !!value.application && typeof value.application === "object";
 }
 
 export async function getConsultStatus(consultLockId: string) {
@@ -87,11 +112,17 @@ async function waitForConsultResult(
 async function resolveCreateApplicationResponse(
   data: CreateApplicationInitialResponse,
 ): Promise<CreateApplicationResponse> {
+  if (isCreateApplicationResponse(data)) {
+    return data;
+  }
+
   if (isPendingConsultResponse(data)) {
     return waitForConsultResult(data.consultLockId);
   }
 
-  return data;
+  throw new Error(
+    "A API retornou uma resposta inesperada ao criar a consulta.",
+  );
 }
 
 export async function listRentalApplications(params?: ListApplicationsParams) {

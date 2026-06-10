@@ -106,16 +106,34 @@ export function NewApplicationPage() {
       await queryClient.invalidateQueries({
         queryKey: ["rental-applications"],
       });
-      const recommended = data.application.recommendation === "RECOMMENDED";
+
+      if (!data.application) {
+        toast.error("Consulta ainda não finalizada", {
+          description:
+            "A análise foi criada, mas ainda não retornou os dados finais. Acompanhe em Minhas consultas em alguns instantes.",
+        });
+
+        return;
+      }
+
+      const approved = data.application.automaticDecision === "APPROVED";
+      const rejected = data.application.automaticDecision === "REJECTED";
 
       toast.success(
-        recommended ? "Consulta recomendada." : "Consulta não recomendada.",
+        approved
+          ? "Consulta aprovada pela Doculoc."
+          : rejected
+            ? "Consulta rejeitada pela Doculoc."
+            : "Consulta enviada para análise manual.",
         {
-          description: recommended
-            ? "Agora preencha os dados para o contrato."
-            : "Você pode contestar a decisão no detalhe da consulta.",
+          description: approved
+            ? "A Órago recomendou a análise e a despesa está dentro do limite permitido."
+            : rejected
+              ? "Acesse os detalhes para verificar se a reprovação veio da Órago ou da regra de moradia Doculoc."
+              : "A análise precisa de revisão manual.",
         },
       );
+
       navigate(`/real_estate/consultas/${data.application.id}`);
     },
     onError: (error) => {
