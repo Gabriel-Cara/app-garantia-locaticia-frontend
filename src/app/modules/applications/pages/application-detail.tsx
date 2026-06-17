@@ -29,6 +29,7 @@ import { downloadContract, generateContract } from "@/services/contracts";
 import { getRentalApplication } from "@/services/rental-applications";
 import { ApplicationStatusBadge, RecommendationBadge } from "../components/application-status-badge";
 import { AdminDecisionDialog } from "../components/admin-decision-dialog";
+import { RentalValuesDialog } from "../components/rental-values-dialog";
 
 function DetailItem({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -101,6 +102,7 @@ export function ApplicationDetailPage({ isAdmin = false }: { isAdmin?: boolean }
   const canContest = !isAdmin && application.status === "REJECTED";
   const canFillContract = !isAdmin && application.status === "WAITING_CONTRACT_DATA";
   const canGenerateContract = isAdmin && application.status === "WAITING_ADMIN_CONTRACT";
+  const canEditRentalValues = isAdmin && application.status === "WAITING_ADMIN_CONTRACT";
   const canAdminDecide = isAdmin && ["REJECTED", "CONTESTED"].includes(application.status);
   const canDownload = application.status === "CONTRACT_GENERATED" && application.contract?.id && isAdmin;
   const requesterName =
@@ -144,6 +146,9 @@ export function ApplicationDetailPage({ isAdmin = false }: { isAdmin?: boolean }
                   <AdminDecisionDialog applicationId={application.id} decision="APPROVED" />
                   <AdminDecisionDialog applicationId={application.id} decision="REJECTED" />
                 </>
+              ) : null}
+              {canEditRentalValues ? (
+                <RentalValuesDialog application={application} />
               ) : null}
               {canGenerateContract ? (
                 <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>

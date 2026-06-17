@@ -10,6 +10,7 @@ import type {
   ListApplicationsParams,
   ListApplicationsResponse,
   RentalApplication,
+  UpdateRentalValuesBody,
 } from "@/types/doculoc";
 
 function buildParams(params?: ListApplicationsParams) {
@@ -212,6 +213,18 @@ export async function decideRentalApplication(
   const response = await api.patch<{ application: RentalApplication }>(
     `/rental-applications/${applicationId}/admin-decision`,
     { decision, reason },
+  );
+
+  return response.data.application;
+}
+
+export async function updateRentalValues(
+  applicationId: string,
+  body: UpdateRentalValuesBody,
+) {
+  const response = await api.patch<{ application: RentalApplication }>(
+    `/rental-applications/${applicationId}/rental-values`,
+    body,
   );
 
   return response.data.application;

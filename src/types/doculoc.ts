@@ -89,6 +89,12 @@ export type RentalApplication = {
   updatedAt?: string;
 };
 
+export type UpdateRentalValuesBody = {
+  rentValue: number;
+  condominiumValue: number;
+  feesValue: number;
+};
+
 export type DecisionResponse = {
   status: string;
   recommendation: string;
