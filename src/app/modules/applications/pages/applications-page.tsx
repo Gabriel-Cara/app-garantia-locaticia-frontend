@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Download, FileSearch, Plus, Search } from "lucide-react";
@@ -20,7 +20,54 @@ import { downloadContract } from "@/services/contracts";
 import { getApiErrorMessage } from "@/services/api";
 import type { RentalApplication, RentalApplicationStatus } from "@/types/doculoc";
 import { statusOptions } from "@/lib/status";
+import { formatDocument, formatDocumentInput, onlyDigits } from "@/lib/format";
 import { ApplicationsTable } from "../components/applications-table";
+
+function normalizeSearchText(value?: string | number | null) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isDocumentSearchValue(value: string) {
+  return onlyDigits(value).length > 0 && !/[^\d\s./-]/.test(value);
+}
+
+function formatSearchValue(value: string) {
+  return isDocumentSearchValue(value) ? formatDocumentInput(value) : value;
+}
+
+function applicationMatchesSearch(application: RentalApplication, search: string) {
+  const normalizedSearch = normalizeSearchText(search.trim());
+  const searchDigits = onlyDigits(search);
+
+  if (!normalizedSearch && !searchDigits) return true;
+
+  const searchableText = normalizeSearchText(
+    [
+      application.tenantName,
+      application.requester?.realEstateProfile?.name,
+      application.requester?.name,
+      application.requester?.email,
+      formatDocument(application.document, application.documentType),
+      formatDocument(application.tenantDocument),
+      application.document,
+      application.tenantDocument,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+
+  const searchableDigits = onlyDigits(
+    `${application.document ?? ""} ${application.tenantDocument ?? ""}`,
+  );
+
+  return (
+    searchableText.includes(normalizedSearch) ||
+    (searchDigits.length > 0 && searchableDigits.includes(searchDigits))
+  );
+}
 
 export function ApplicationsPage({
   isAdmin = false,
@@ -35,17 +82,21 @@ export function ApplicationsPage({
   description?: string;
   eyebrow?: string;
 }) {
-  const [document, setDocument] = useState("");
+  const [search, setSearch] = useState("");
   const [status, setStatus] = useState<RentalApplicationStatus | "ALL">(forcedStatus ?? "ALL");
   const basePath = isAdmin ? "/admin" : "/real_estate";
+  const trimmedSearch = search.trim();
+  const documentSearch = isDocumentSearchValue(trimmedSearch)
+    ? trimmedSearch
+    : undefined;
 
   const effectiveStatus = forcedStatus ?? status;
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["rental-applications", effectiveStatus, document, isAdmin],
+    queryKey: ["rental-applications", effectiveStatus, documentSearch, isAdmin],
     queryFn: () =>
       listRentalApplications({
         status: effectiveStatus,
-        document,
+        document: documentSearch,
         page: 1,
         perPage: 50,
       }),
@@ -62,7 +113,14 @@ export function ApplicationsPage({
     }
   }
 
-  const applications = data?.applications ?? [];
+  const applications = useMemo(
+    () =>
+      (data?.applications ?? []).filter((application) =>
+        applicationMatchesSearch(application, search),
+      ),
+    [data?.applications, search],
+  );
+  const totalRecords = trimmedSearch ? applications.length : (data?.meta.total ?? 0);
 
   return (
     <PageShell>
@@ -93,9 +151,11 @@ export function ApplicationsPage({
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-11 rounded-2xl bg-white pl-10"
-              placeholder="Buscar por CPF ou CNPJ"
-              value={document}
-              onChange={(event) => setDocument(event.target.value)}
+              placeholder="Buscar por nome, CPF ou CNPJ"
+              value={search}
+              onChange={(event) =>
+                setSearch(formatSearchValue(event.target.value))
+              }
             />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
@@ -115,7 +175,7 @@ export function ApplicationsPage({
             ) : null}
             <div className="flex w-full items-center justify-center gap-2 rounded-full border bg-stone-50 px-3 py-2 text-sm text-muted-foreground sm:w-auto">
               <Download className="size-4" />
-              {data?.meta.total ?? 0} registros
+              {totalRecords} registros
             </div>
           </div>
         </div>

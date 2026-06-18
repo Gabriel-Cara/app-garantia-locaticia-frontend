@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader, PageShell } from "@/app/modules/_components/page-shell";
-import { formatDocument } from "@/lib/format";
+import { formatDocument, formatDocumentInput, onlyDigits } from "@/lib/format";
 import { getApiErrorMessage } from "@/services/api";
 import {
   fillContractData,
@@ -25,7 +25,10 @@ import type { ContractDataBody } from "@/types/doculoc";
 
 const contractDataSchema = z.object({
   tenantName: z.string().min(3, "Informe o nome completo."),
-  tenantDocument: z.string().min(11, "Informe CPF ou CNPJ."),
+  tenantDocument: z.string().refine(
+    (value) => [11, 14].includes(onlyDigits(value).length),
+    "Informe um CPF ou CNPJ válido.",
+  ),
   tenantEmail: z.string().email("Informe um e-mail válido."),
   tenantPhone: z.string().min(10, "Informe um telefone válido."),
   propertyZipCode: z.string().min(8, "Informe o CEP."),
@@ -72,6 +75,7 @@ export function ContractDataPage() {
 
   const [isFetchingCep, setIsFetchingCep] = useState(false);
 
+  const tenantDocument = form.watch("tenantDocument");
   const propertyZipCode = form.watch("propertyZipCode");
 
   const { data: application } = useQuery({
@@ -85,7 +89,9 @@ export function ContractDataPage() {
 
     form.reset({
       tenantName: application.tenantName ?? "",
-      tenantDocument: application.tenantDocument ?? application.document ?? "",
+      tenantDocument: formatDocumentInput(
+        application.tenantDocument ?? application.document ?? "",
+      ),
       tenantEmail: application.tenantEmail ?? "",
       tenantPhone: application.tenantPhone ?? "",
       propertyZipCode: application.propertyZipCode ?? "",
@@ -172,6 +178,13 @@ export function ContractDataPage() {
     mutation.mutate(values);
   }
 
+  function handleTenantDocumentChange(value: string) {
+    form.setValue("tenantDocument", formatDocumentInput(value), {
+      shouldDirty: true,
+    });
+    form.clearErrors("tenantDocument");
+  }
+
   const isAllowed = application?.status === "WAITING_CONTRACT_DATA";
 
   return (
@@ -227,7 +240,14 @@ export function ContractDataPage() {
               <Input
                 id="tenantDocument"
                 className="h-11 rounded-2xl"
+                inputMode="numeric"
+                maxLength={18}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
                 {...form.register("tenantDocument")}
+                value={tenantDocument}
+                onChange={(event) =>
+                  handleTenantDocumentChange(event.target.value)
+                }
               />
               <FieldError
                 message={form.formState.errors.tenantDocument?.message}

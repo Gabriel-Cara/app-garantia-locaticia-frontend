@@ -33,6 +33,10 @@ function MobileInfo({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+function getApplicationSubjectName(application: RentalApplication) {
+  return application.tenantName?.trim() || "Nome não informado";
+}
+
 function ApplicationMobileCard({
   application,
   basePath,
@@ -57,6 +61,9 @@ function ApplicationMobileCard({
         <div className="min-w-0 flex-1">
           <p className="wrap-break-word text-base font-semibold text-foreground">
             {formatDocument(application.document, application.documentType)}
+          </p>
+          <p className="mt-0.5 truncate text-sm text-muted-foreground">
+            {getApplicationSubjectName(application)}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <RecommendationBadge recommendation={application.recommendation} />
@@ -134,7 +141,9 @@ export function ApplicationsTable({
                 <div className="truncate font-medium text-foreground">
                   {formatDocument(application.document, application.documentType)}
                 </div>
-                <div className="text-xs text-muted-foreground">{application.documentType}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {getApplicationSubjectName(application)}
+                </div>
               </div>
             </div>
           );

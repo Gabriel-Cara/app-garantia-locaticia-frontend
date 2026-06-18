@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader, PageShell } from "@/app/modules/_components/page-shell";
-import { formatCurrency, onlyDigits } from "@/lib/format";
+import { formatCurrency, formatDocumentInput, onlyDigits } from "@/lib/format";
 import {
   getApiErrorCode,
   getApiErrorMessage,
@@ -84,6 +84,7 @@ export function NewApplicationPage() {
   });
 
   const documentType = form.watch("documentType");
+  const documentValue = form.watch("document");
   const rentValue = Number(form.watch("rentValue") || 0);
   const condominiumValue = Number(form.watch("condominiumValue") || 0);
   const iptuValue = Number(form.watch("feesValue") || 0);
@@ -174,6 +175,13 @@ export function NewApplicationPage() {
     form.setValue("document", "");
   }
 
+  function handleDocumentChange(value: string) {
+    form.setValue("document", formatDocumentInput(value, documentType), {
+      shouldDirty: true,
+    });
+    form.clearErrors("document");
+  }
+
   function handleSubmit(values: NewApplicationForm) {
     mutation.mutate(values);
   }
@@ -240,12 +248,16 @@ export function NewApplicationPage() {
                   <Input
                     id="document"
                     className="h-12 rounded-2xl pl-10"
+                    inputMode="numeric"
+                    maxLength={documentType === "CPF" ? 14 : 18}
                     placeholder={
                       documentType === "CPF"
                         ? "000.000.000-00"
                         : "00.000.000/0000-00"
                     }
                     {...form.register("document")}
+                    value={documentValue}
+                    onChange={(event) => handleDocumentChange(event.target.value)}
                   />
                 </div>
                 <FieldError message={form.formState.errors.document?.message} />

@@ -1,7 +1,7 @@
 import type { RentalApplicationStatus } from "@/types/doculoc";
 
 export const applicationStatusLabels: Record<RentalApplicationStatus, string> = {
-  CONSULTED: "Consultada",
+  CONSULTED: "Revisão manual",
   WAITING_CONTRACT_DATA: "Preencher dados",
   WAITING_ADMIN_CONTRACT: "Aguardando contrato",
   CONTRACT_GENERATED: "Contrato gerado",
@@ -12,7 +12,7 @@ export const applicationStatusLabels: Record<RentalApplicationStatus, string> = 
 };
 
 export const applicationStatusDescriptions: Record<RentalApplicationStatus, string> = {
-  CONSULTED: "Consulta criada e aguardando evolução do fluxo.",
+  CONSULTED: "Consulta concluída, mas precisa de decisão manual do administrador.",
   WAITING_CONTRACT_DATA: "Análise recomendada. A imobiliária precisa completar os dados do contrato.",
   WAITING_ADMIN_CONTRACT: "Dados preenchidos. O admin já pode gerar o contrato.",
   CONTRACT_GENERATED: "Contrato pronto para download.",

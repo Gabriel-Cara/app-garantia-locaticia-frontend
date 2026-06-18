@@ -25,6 +25,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { fetchAddressByCep } from "@/services/cep";
+import { formatDocumentInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -92,6 +93,7 @@ export function RegisterForm({
   });
 
   const realEstateZipCode = watch("realEstateProfile.zipCode");
+  const realEstateCnpj = watch("realEstateProfile.cnpj") ?? "";
 
   useEffect(() => {
     const cleanZipCode = realEstateZipCode?.replace(/\D/g, "");
@@ -146,6 +148,12 @@ export function RegisterForm({
     }
   }
 
+  function handleCnpjChange(value: string) {
+    setValue("realEstateProfile.cnpj", formatDocumentInput(value, "CNPJ"), {
+      shouldDirty: true,
+    });
+  }
+
   return (
     <form
       onSubmit={handleSubmit(handleSignUp)}
@@ -193,8 +201,12 @@ export function RegisterForm({
             <InputGroupInput
               id="real-estate-cnpj"
               type="text"
+              inputMode="numeric"
+              maxLength={18}
               placeholder="00.000.000/0000-00"
               {...register("realEstateProfile.cnpj")}
+              value={realEstateCnpj}
+              onChange={(event) => handleCnpjChange(event.target.value)}
             />
           </InputGroup>
         </Field>
