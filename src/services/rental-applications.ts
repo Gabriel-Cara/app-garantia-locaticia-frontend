@@ -182,8 +182,11 @@ export async function fillContractData(
     `/rental-applications/${applicationId}/contract-data`,
     {
       ...body,
-      tenantDocument: onlyDigits(body.tenantDocument),
-      tenantPhone: onlyDigits(body.tenantPhone),
+      tenants: body.tenants.map((tenant) => ({
+        ...tenant,
+        document: onlyDigits(tenant.document),
+        phone: onlyDigits(tenant.phone),
+      })),
       propertyZipCode: onlyDigits(body.propertyZipCode),
     },
   );
@@ -228,4 +231,8 @@ export async function updateRentalValues(
   );
 
   return response.data.application;
+}
+
+export async function deleteRentalApplication(applicationId: string) {
+  await api.delete(`/rental-applications/${applicationId}`);
 }

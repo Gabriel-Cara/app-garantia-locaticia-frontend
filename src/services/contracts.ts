@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { Contract } from "@/types/doculoc";
+import type { Contract, ContractSigner } from "@/types/doculoc";
 
 const DOCX_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -18,7 +18,9 @@ function getFileNameFromContentDisposition(
 ) {
   if (!contentDisposition) return fallbackFileName;
 
-  const utf8FileNameMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  const utf8FileNameMatch = contentDisposition.match(
+    /filename\*=UTF-8''([^;]+)/i,
+  );
 
   if (utf8FileNameMatch?.[1]) {
     return decodeURIComponent(utf8FileNameMatch[1]);
@@ -80,4 +82,21 @@ export async function downloadContract(
   window.setTimeout(() => {
     window.URL.revokeObjectURL(url);
   }, 1000);
+}
+
+export async function sendContractToSignature(contractId: string) {
+  const response = await api.post<{ contract: Contract }>(
+    `/contracts/${contractId}/signature/send`,
+  );
+
+  return response.data.contract;
+}
+
+export async function getContractSignatureStatus(contractId: string) {
+  const response = await api.get<{
+    contract: Contract;
+    signers: ContractSigner[];
+  }>(`/contracts/${contractId}/signature/status`);
+
+  return response.data;
 }

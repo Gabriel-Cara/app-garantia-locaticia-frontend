@@ -1,36 +1,55 @@
-import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet-async";
+// React
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Helmet } from "react-helmet-async";
+import { useEffect, useState } from "react";
+
+// Libs
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Home, Loader2, Save } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { fetchAddressByCep } from "@/services/cep";
 
+// Icons
+import { ArrowLeft, Home, Loader2, Plus, Save, Trash2 } from "lucide-react";
+
+// Components
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader, PageShell } from "@/app/modules/_components/page-shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader, PageShell } from "@/app/modules/_components/page-shell";
+
+// Utils
 import { formatDocument, formatDocumentInput, onlyDigits } from "@/lib/format";
+import type { ContractDataBody } from "@/types/doculoc";
+
+// Services
 import { getApiErrorMessage } from "@/services/api";
+import { fetchAddressByCep } from "@/services/cep";
 import {
   fillContractData,
   getRentalApplication,
 } from "@/services/rental-applications";
-import type { ContractDataBody } from "@/types/doculoc";
+
+const tenantSchema = z.object({
+  name: z.string().min(3, "Informe o nome completo."),
+  document: z
+    .string()
+    .refine(
+      (value) => [11, 14].includes(onlyDigits(value).length),
+      "Informe um CPF ou CNPJ válido.",
+    ),
+  email: z.string().email("Informe um e-mail válido."),
+  phone: z.string().min(10, "Informe um telefone válido."),
+});
 
 const contractDataSchema = z.object({
-  tenantName: z.string().min(3, "Informe o nome completo."),
-  tenantDocument: z.string().refine(
-    (value) => [11, 14].includes(onlyDigits(value).length),
-    "Informe um CPF ou CNPJ válido.",
-  ),
-  tenantEmail: z.string().email("Informe um e-mail válido."),
-  tenantPhone: z.string().min(10, "Informe um telefone válido."),
+  tenants: z
+    .array(tenantSchema)
+    .min(1, "Informe pelo menos um locatário.")
+    .max(3, "É permitido adicionar no máximo 3 locatários."),
   propertyZipCode: z.string().min(8, "Informe o CEP."),
   propertyStreet: z.string().min(3, "Informe a rua."),
   propertyNumber: z.string().min(1, "Informe o número."),
@@ -58,10 +77,14 @@ export function ContractDataPage() {
   const form = useForm<ContractDataForm>({
     resolver: zodResolver(contractDataSchema),
     defaultValues: {
-      tenantName: "",
-      tenantDocument: "",
-      tenantEmail: "",
-      tenantPhone: "",
+      tenants: [
+        {
+          name: "",
+          document: "",
+          email: "",
+          phone: "",
+        },
+      ],
       propertyZipCode: "",
       propertyStreet: "",
       propertyNumber: "",
@@ -73,9 +96,13 @@ export function ContractDataPage() {
     },
   });
 
+  const tenantsFieldArray = useFieldArray({
+    control: form.control,
+    name: "tenants",
+  });
+
   const [isFetchingCep, setIsFetchingCep] = useState(false);
 
-  const tenantDocument = form.watch("tenantDocument");
   const propertyZipCode = form.watch("propertyZipCode");
 
   const { data: application } = useQuery({
@@ -87,13 +114,27 @@ export function ContractDataPage() {
   useEffect(() => {
     if (!application) return;
 
+    const tenants =
+      application.tenants && application.tenants.length > 0
+        ? application.tenants.map((tenant) => ({
+            name: tenant.name,
+            document: formatDocumentInput(tenant.document),
+            email: tenant.email,
+            phone: tenant.phone,
+          }))
+        : [
+            {
+              name: application.tenantName ?? "",
+              document: formatDocumentInput(
+                application.tenantDocument ?? application.document ?? "",
+              ),
+              email: application.tenantEmail ?? "",
+              phone: application.tenantPhone ?? "",
+            },
+          ];
+
     form.reset({
-      tenantName: application.tenantName ?? "",
-      tenantDocument: formatDocumentInput(
-        application.tenantDocument ?? application.document ?? "",
-      ),
-      tenantEmail: application.tenantEmail ?? "",
-      tenantPhone: application.tenantPhone ?? "",
+      tenants,
       propertyZipCode: application.propertyZipCode ?? "",
       propertyStreet: application.propertyStreet ?? "",
       propertyNumber: application.propertyNumber ?? "",
@@ -178,11 +219,11 @@ export function ContractDataPage() {
     mutation.mutate(values);
   }
 
-  function handleTenantDocumentChange(value: string) {
-    form.setValue("tenantDocument", formatDocumentInput(value), {
+  function handleTenantDocumentChange(index: number, value: string) {
+    form.setValue(`tenants.${index}.document`, formatDocumentInput(value), {
       shouldDirty: true,
     });
-    form.clearErrors("tenantDocument");
+    form.clearErrors(`tenants.${index}.document`);
   }
 
   const isAllowed = application?.status === "WAITING_CONTRACT_DATA";
@@ -222,60 +263,148 @@ export function ContractDataPage() {
 
       <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-5">
         <Card className="bg-white/85 shadow-sm">
-          <CardHeader>
-            <CardTitle>Dados do locatário</CardTitle>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Dados do(s) locatário(s)</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                O primeiro locatário deve ser o CPF/CNPJ consultado. Os demais
+                entram apenas no contrato e não consomem novas consultas.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={tenantsFieldArray.fields.length >= 3}
+              onClick={() =>
+                tenantsFieldArray.append({
+                  name: "",
+                  document: "",
+                  email: "",
+                  phone: "",
+                })
+              }
+            >
+              <Plus className="size-4" />
+              Adicionar locatário
+            </Button>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="tenantName">Nome completo</Label>
-              <Input
-                id="tenantName"
-                className="h-11 rounded-2xl"
-                {...form.register("tenantName")}
-              />
-              <FieldError message={form.formState.errors.tenantName?.message} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tenantDocument">CPF ou CNPJ</Label>
-              <Input
-                id="tenantDocument"
-                className="h-11 rounded-2xl"
-                inputMode="numeric"
-                maxLength={18}
-                placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                {...form.register("tenantDocument")}
-                value={tenantDocument}
-                onChange={(event) =>
-                  handleTenantDocumentChange(event.target.value)
-                }
-              />
-              <FieldError
-                message={form.formState.errors.tenantDocument?.message}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tenantPhone">Telefone</Label>
-              <Input
-                id="tenantPhone"
-                className="h-11 rounded-2xl"
-                {...form.register("tenantPhone")}
-              />
-              <FieldError
-                message={form.formState.errors.tenantPhone?.message}
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="tenantEmail">E-mail</Label>
-              <Input
-                id="tenantEmail"
-                type="email"
-                className="h-11 rounded-2xl"
-                {...form.register("tenantEmail")}
-              />
-              <FieldError
-                message={form.formState.errors.tenantEmail?.message}
-              />
-            </div>
+
+          <CardContent className="grid gap-5">
+            {tenantsFieldArray.fields.map((field, index) => {
+              const tenantDocument = form.watch(`tenants.${index}.document`);
+
+              return (
+                <div
+                  key={field.id}
+                  className="grid gap-4 rounded-3xl border bg-stone-50/70 p-4 md:grid-cols-2"
+                >
+                  <div className="flex items-center justify-between gap-3 md:col-span-2">
+                    <div>
+                      <h3 className="font-semibold text-foreground">
+                        Locatário {index + 1}
+                      </h3>
+                      {index === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Deve ser o documento principal consultado.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Locatário adicional para constar no contrato.
+                        </p>
+                      )}
+                    </div>
+
+                    {tenantsFieldArray.fields.length > 1 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                        onClick={() => tenantsFieldArray.remove(index)}
+                      >
+                        <Trash2 className="size-4" />
+                        Remover
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor={`tenants.${index}.name`}>
+                      Nome completo
+                    </Label>
+                    <Input
+                      id={`tenants.${index}.name`}
+                      className="h-11 rounded-2xl"
+                      {...form.register(`tenants.${index}.name`)}
+                    />
+                    <FieldError
+                      message={
+                        form.formState.errors.tenants?.[index]?.name?.message
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`tenants.${index}.document`}>
+                      CPF ou CNPJ
+                    </Label>
+                    <Input
+                      id={`tenants.${index}.document`}
+                      className="h-11 rounded-2xl"
+                      inputMode="numeric"
+                      maxLength={18}
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                      {...form.register(`tenants.${index}.document`)}
+                      value={tenantDocument ?? ""}
+                      onChange={(event) =>
+                        handleTenantDocumentChange(index, event.target.value)
+                      }
+                    />
+                    <FieldError
+                      message={
+                        form.formState.errors.tenants?.[index]?.document
+                          ?.message
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`tenants.${index}.phone`}>Telefone</Label>
+                    <Input
+                      id={`tenants.${index}.phone`}
+                      className="h-11 rounded-2xl"
+                      {...form.register(`tenants.${index}.phone`)}
+                    />
+                    <FieldError
+                      message={
+                        form.formState.errors.tenants?.[index]?.phone?.message
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor={`tenants.${index}.email`}>E-mail</Label>
+                    <Input
+                      id={`tenants.${index}.email`}
+                      type="email"
+                      className="h-11 rounded-2xl"
+                      {...form.register(`tenants.${index}.email`)}
+                    />
+                    <FieldError
+                      message={
+                        form.formState.errors.tenants?.[index]?.email?.message
+                      }
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            {tenantsFieldArray.fields.length >= 3 ? (
+              <p className="text-sm text-muted-foreground">
+                Limite de 3 locatários por contrato atingido.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
 

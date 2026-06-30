@@ -33,6 +33,15 @@ export type Contract = {
   generatedById?: string | null;
   generatedAt?: string | null;
   errorMessage?: string | null;
+
+  clicksignEnvelopeId?: string | null;
+  clicksignDocumentId?: string | null;
+  signatureStatus?: ContractSignatureStatus | null;
+  signatureError?: string | null;
+  sentToSignatureAt?: string | null;
+  signedAt?: string | null;
+  signers?: ContractSigner[];
+
   createdAt?: string;
   updatedAt?: string;
 };
@@ -48,6 +57,18 @@ export type Contest = {
   adminNote?: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type RentalApplicationTenant = {
+  id: string;
+  applicationId: string;
+  order: number;
+  name: string;
+  document: string;
+  email: string;
+  phone: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type RentalApplication = {
@@ -76,6 +97,7 @@ export type RentalApplication = {
   tenantDocument?: string | null;
   tenantEmail?: string | null;
   tenantPhone?: string | null;
+  tenants?: RentalApplicationTenant[];
   propertyZipCode?: string | null;
   propertyStreet?: string | null;
   propertyNumber?: string | null;
@@ -167,11 +189,16 @@ export type CreateApplicationInitialResponse =
   | CreateApplicationResponse
   | PendingConsultResponse;
 
+export type ContractTenantBody = {
+  name: string;
+  document: string;
+  email: string;
+  phone: string;
+};
+
 export type ContractDataBody = {
-  tenantName: string;
-  tenantDocument: string;
-  tenantEmail: string;
-  tenantPhone: string;
+  tenants: ContractTenantBody[];
+
   propertyZipCode: string;
   propertyStreet: string;
   propertyNumber: string;
@@ -180,6 +207,43 @@ export type ContractDataBody = {
   propertyCity: string;
   propertyState: string;
   adhesionFee: number;
+};
+
+export type ContractSignatureStatus =
+  | "NOT_SENT"
+  | "ENVELOPE_CREATED"
+  | "SENT"
+  | "PARTIALLY_SIGNED"
+  | "SIGNED"
+  | "REFUSED"
+  | "CANCELLED"
+  | "ERROR"
+  | string;
+
+export type ContractSignerRole = "TENANT" | "REAL_ESTATE" | "DOCULOC" | string;
+
+export type ContractSignerStatus =
+  | "PENDING"
+  | "SENT"
+  | "SIGNED"
+  | "REFUSED"
+  | "CANCELLED"
+  | "ERROR"
+  | string;
+
+export type ContractSigner = {
+  id: string;
+  contractId: string;
+  role: ContractSignerRole;
+  name: string;
+  email: string;
+  phone?: string | null;
+  document?: string | null;
+  clicksignSignerId?: string | null;
+  status: ContractSignerStatus;
+  signedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type Wallet = {

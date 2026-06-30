@@ -113,10 +113,11 @@ export const router = createBrowserRouter([
         element: (
           <ApplicationsPage
             isAdmin
-            forcedStatus="WAITING_ADMIN_CONTRACT"
+            forcedStatuses={["WAITING_ADMIN_CONTRACT", "CONTRACT_GENERATED"]}
+            tableMode="contracts"
             eyebrow="Contratos"
-            title="Contratos pendentes"
-            description="Casos com dados de locatário e imóvel preenchidos, prontos para geração do contrato DOCX."
+            title="Contratos"
+            description="Acompanhe contratos prontos para geração, contratos gerados e contratos enviados para assinatura eletrônica."
           />
         ),
       },

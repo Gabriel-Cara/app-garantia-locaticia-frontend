@@ -1,10 +1,22 @@
-import { useMemo, useState } from "react";
+// React
 import { Helmet } from "react-helmet-async";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+
+// Icons
 import { Download, FileSearch, Plus, Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+
+// Libs
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+// Components
+import {
+  EmptyState,
+  PageHeader,
+  PageShell,
+} from "@/app/modules/_components/page-shell";
+import { ApplicationsTable } from "../components/applications-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,14 +26,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EmptyState, PageHeader, PageShell } from "@/app/modules/_components/page-shell";
-import { listRentalApplications } from "@/services/rental-applications";
+
+// Services
+import {
+  deleteRentalApplication,
+  listRentalApplications,
+} from "@/services/rental-applications";
 import { downloadContract } from "@/services/contracts";
 import { getApiErrorMessage } from "@/services/api";
-import type { RentalApplication, RentalApplicationStatus } from "@/types/doculoc";
-import { statusOptions } from "@/lib/status";
+
+// Utils
+import type {
+  RentalApplication,
+  RentalApplicationStatus,
+} from "@/types/doculoc";
 import { formatDocument, formatDocumentInput, onlyDigits } from "@/lib/format";
-import { ApplicationsTable } from "../components/applications-table";
+import { statusOptions } from "@/lib/status";
 
 function normalizeSearchText(value?: string | number | null) {
   return String(value ?? "")
@@ -38,7 +58,10 @@ function formatSearchValue(value: string) {
   return isDocumentSearchValue(value) ? formatDocumentInput(value) : value;
 }
 
-function applicationMatchesSearch(application: RentalApplication, search: string) {
+function applicationMatchesSearch(
+  application: RentalApplication,
+  search: string,
+) {
   const normalizedSearch = normalizeSearchText(search.trim());
   const searchDigits = onlyDigits(search);
 
@@ -69,28 +92,40 @@ function applicationMatchesSearch(application: RentalApplication, search: string
   );
 }
 
-export function ApplicationsPage({
-  isAdmin = false,
-  forcedStatus,
-  title,
-  description,
-  eyebrow,
-}: {
+interface IApplicationsPage {
   isAdmin?: boolean;
   forcedStatus?: RentalApplicationStatus;
+  forcedStatuses?: RentalApplicationStatus[];
+  tableMode?: ApplicationsTableMode;
   title?: string;
   description?: string;
   eyebrow?: string;
-}) {
+}
+
+type ApplicationsTableMode = "default" | "contracts";
+
+export function ApplicationsPage({
+  isAdmin = false,
+  forcedStatus,
+  forcedStatuses,
+  tableMode = "default",
+  title,
+  description,
+  eyebrow,
+}: IApplicationsPage) {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<RentalApplicationStatus | "ALL">(forcedStatus ?? "ALL");
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<RentalApplicationStatus | "ALL">(
+    forcedStatus ?? "ALL",
+  );
   const basePath = isAdmin ? "/admin" : "/real_estate";
   const trimmedSearch = search.trim();
   const documentSearch = isDocumentSearchValue(trimmedSearch)
     ? trimmedSearch
     : undefined;
 
-  const effectiveStatus = forcedStatus ?? status;
+  const hasForcedStatuses = Boolean(forcedStatuses?.length);
+  const effectiveStatus = hasForcedStatuses ? "ALL" : (forcedStatus ?? status);
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["rental-applications", effectiveStatus, documentSearch, isAdmin],
     queryFn: () =>
@@ -102,11 +137,27 @@ export function ApplicationsPage({
       }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (applicationId: string) =>
+      deleteRentalApplication(applicationId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["rental-applications"],
+      });
+
+      toast.success("Consulta excluída com sucesso.");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
   async function handleDownload(application: RentalApplication) {
     if (!application.contract?.id) return;
 
     try {
-      await downloadContract(application.contract.id, application.contract.fileName ?? undefined);
+      await downloadContract(
+        application.contract.id,
+        application.contract.fileName ?? undefined,
+      );
       toast.success("Download iniciado.");
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -115,19 +166,30 @@ export function ApplicationsPage({
 
   const applications = useMemo(
     () =>
-      (data?.applications ?? []).filter((application) =>
-        applicationMatchesSearch(application, search),
-      ),
-    [data?.applications, search],
+      (data?.applications ?? []).filter((application) => {
+        const matchesForcedStatuses =
+          !forcedStatuses?.length ||
+          forcedStatuses.includes(application.status);
+
+        return (
+          matchesForcedStatuses && applicationMatchesSearch(application, search)
+        );
+      }),
+    [data?.applications, forcedStatuses, search],
   );
-  const totalRecords = trimmedSearch ? applications.length : (data?.meta.total ?? 0);
+  const totalRecords =
+    trimmedSearch || hasForcedStatuses
+      ? applications.length
+      : (data?.meta.total ?? 0);
 
   return (
     <PageShell>
       <Helmet title={title ?? (isAdmin ? "Consultas" : "Minhas consultas")} />
 
       <PageHeader
-        eyebrow={eyebrow ?? (isAdmin ? "Operação Admin" : "Carteira de consultas")}
+        eyebrow={
+          eyebrow ?? (isAdmin ? "Operação Admin" : "Carteira de consultas")
+        }
         title={title ?? (isAdmin ? "Consultas" : "Minhas consultas")}
         description={
           description ??
@@ -135,7 +197,11 @@ export function ApplicationsPage({
         }
         action={
           !isAdmin ? (
-            <Button asChild size="lg" className="beam-button shadow-lg shadow-primary/15">
+            <Button
+              asChild
+              size="lg"
+              className="beam-button shadow-lg shadow-primary/15"
+            >
               <Link to="/real_estate/nova-consulta">
                 <Plus className="size-4" />
                 Nova consulta
@@ -159,8 +225,13 @@ export function ApplicationsPage({
             />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-            {!forcedStatus ? (
-              <Select value={status} onValueChange={(value) => setStatus(value as RentalApplicationStatus | "ALL")}>
+            {!forcedStatus && !hasForcedStatuses ? (
+              <Select
+                value={status}
+                onValueChange={(value) =>
+                  setStatus(value as RentalApplicationStatus | "ALL")
+                }
+              >
                 <SelectTrigger className="h-11 w-full rounded-2xl bg-white sm:w-64">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -184,7 +255,10 @@ export function ApplicationsPage({
       {isLoading ? (
         <div className="grid gap-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-24 animate-pulse rounded-3xl border bg-white/70" />
+            <div
+              key={index}
+              className="h-24 animate-pulse rounded-3xl border bg-white/70"
+            />
           ))}
         </div>
       ) : applications.length > 0 ? (
@@ -192,7 +266,14 @@ export function ApplicationsPage({
           applications={applications}
           basePath={basePath}
           isAdmin={isAdmin}
+          tableMode={tableMode}
           onDownloadContract={handleDownload}
+          onDeleteApplication={(application) =>
+            deleteMutation.mutate(application.id)
+          }
+          deletingApplicationId={
+            deleteMutation.isPending ? deleteMutation.variables : null
+          }
         />
       ) : (
         <EmptyState
@@ -202,7 +283,9 @@ export function ApplicationsPage({
           action={
             !isAdmin ? (
               <Button asChild>
-                <Link to="/real_estate/nova-consulta">Criar primeira consulta</Link>
+                <Link to="/real_estate/nova-consulta">
+                  Criar primeira consulta
+                </Link>
               </Button>
             ) : null
           }
@@ -210,7 +293,9 @@ export function ApplicationsPage({
       )}
 
       {isFetching && !isLoading ? (
-        <p className="text-center text-xs text-muted-foreground">Atualizando lista...</p>
+        <p className="text-center text-xs text-muted-foreground">
+          Atualizando lista...
+        </p>
       ) : null}
     </PageShell>
   );
