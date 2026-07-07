@@ -6,17 +6,12 @@ import {
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
 import { resetPassword } from "@/api/reset-password";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2, SquareAsterisk } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { PasswordInputGroup } from "./password-input-group";
