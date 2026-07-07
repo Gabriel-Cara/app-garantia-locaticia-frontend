@@ -19,6 +19,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, SquareAsterisk } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { PasswordInputGroup } from "./password-input-group";
 
 const resetPasswordFormSchema = z
   .object({
@@ -64,7 +65,9 @@ export function ResetPasswordForm({
     const parsed = resetPasswordFormSchema.safeParse(data);
 
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Verifique os campos informados.");
+      toast.error(
+        parsed.error.issues[0]?.message ?? "Verifique os campos informados.",
+      );
       return;
     }
 
@@ -75,7 +78,9 @@ export function ResetPasswordForm({
         passwordConfirmation: parsed.data.passwordConfirmation,
       });
 
-      toast.success("Senha redefinida com sucesso! Faça login com sua nova senha.");
+      toast.success(
+        "Senha redefinida com sucesso! Faça login com sua nova senha.",
+      );
       navigate("/sign-in");
     } catch (error) {
       toast.error("Link inválido, expirado ou senha não aceita.");
@@ -105,36 +110,26 @@ export function ResetPasswordForm({
 
         <Field>
           <FieldLabel htmlFor="password">Nova senha</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <SquareAsterisk />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="password"
-              type="password"
-              placeholder="Digite sua nova senha"
-              required
-              minLength={8}
-              {...register("password")}
-            />
-          </InputGroup>
+          <PasswordInputGroup
+            id="password"
+            placeholder="Digite sua nova senha"
+            required
+            minLength={8}
+            {...register("password")}
+          />
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="passwordConfirmation">Confirmar nova senha</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <SquareAsterisk />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="passwordConfirmation"
-              type="password"
-              placeholder="Confirme sua nova senha"
-              required
-              minLength={8}
-              {...register("passwordConfirmation")}
-            />
-          </InputGroup>
+          <FieldLabel htmlFor="passwordConfirmation">
+            Confirmar nova senha
+          </FieldLabel>
+          <PasswordInputGroup
+            id="passwordConfirmation"
+            placeholder="Confirme sua nova senha"
+            required
+            minLength={8}
+            {...register("passwordConfirmation")}
+          />
         </Field>
 
         <Field>
@@ -154,7 +149,10 @@ export function ResetPasswordForm({
         <Field>
           <FieldDescription className="text-center text-foreground">
             Precisa de outro link?{" "}
-            <Link to="/forgot-password" className="underline underline-offset-4">
+            <Link
+              to="/forgot-password"
+              className="underline underline-offset-4"
+            >
               Recuperar senha
             </Link>
           </FieldDescription>

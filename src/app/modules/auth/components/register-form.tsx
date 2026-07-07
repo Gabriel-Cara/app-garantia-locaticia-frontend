@@ -1,6 +1,5 @@
 // Components
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
@@ -30,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useEffect, useState } from "react";
+import { PasswordInputGroup } from "./password-input-group";
 
 const signUpForm = z.object({
   email: z.email(),
@@ -388,9 +388,8 @@ export function RegisterForm({
           <div className="flex items-center">
             <FieldLabel htmlFor="password">Senha</FieldLabel>
           </div>
-          <Input
+          <PasswordInputGroup
             id="password"
-            type="password"
             placeholder="********"
             required
             {...register("password")}

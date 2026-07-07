@@ -26,8 +26,13 @@ import { ApplicationsTable } from "@/app/modules/applications/components/applica
 export function RealEstateDashboard() {
   const { session } = useAuth();
   const { data, isLoading } = useQuery({
-    queryKey: ["real-estate-dashboard-applications"],
+    queryKey: ["real-estate-dashboard-applications", session?.user.id],
     queryFn: () => listRentalApplications({ page: 1, perPage: 100 }),
+    enabled: Boolean(session?.user.id),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: 60_000,
   });
 
   const applications = data?.applications ?? [];
@@ -112,6 +117,11 @@ export function RealEstateDashboard() {
       </div>
 
       <div>
+        {isError ? (
+          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+            Não foi possível carregar as consultas: {getApiErrorMessage(error)}
+          </div>
+        ) : null}
         {isLoading ? (
           <div className="h-96 animate-pulse rounded-3xl border bg-white/70" />
         ) : (
