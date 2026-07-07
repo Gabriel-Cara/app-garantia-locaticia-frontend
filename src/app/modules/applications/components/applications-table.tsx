@@ -82,6 +82,22 @@ function getSignatureProgress(application: RentalApplication) {
     (signer) => signer.status === "SIGNED",
   ).length;
 
+  if (contract?.signatureStatus === "ACTION_REQUIRED") {
+    const value =
+      totalSigners > 0 ? Math.round((signedSigners / totalSigners) * 100) : 0;
+
+    return {
+      value,
+      signedSigners,
+      totalSigners,
+      label: "Ação necessária",
+      description:
+        totalSigners > 0
+          ? `${signedSigners}/${totalSigners} assinaram`
+          : "Verifique a assinatura",
+    };
+  }
+
   if (contract?.signatureStatus === "SIGNED") {
     return {
       value: 100,
@@ -120,7 +136,15 @@ function getSignatureProgress(application: RentalApplication) {
   };
 }
 
-function getSignatureProgressColor(value: number) {
+function getSignatureProgressColor(value: number, status?: string | null) {
+  if (
+    status === "ACTION_REQUIRED" ||
+    status === "ERROR" ||
+    status === "REFUSED"
+  ) {
+    return "bg-rose-500";
+  }
+
   if (value >= 100) {
     return "bg-emerald-500";
   }
@@ -159,7 +183,10 @@ function ContractSignatureProgress({
       <Progress
         value={progress.value}
         className="h-2 bg-zinc-200"
-        indicatorClassName={getSignatureProgressColor(progress.value)}
+        indicatorClassName={getSignatureProgressColor(
+          progress.value,
+          application.contract?.signatureStatus,
+        )}
       />
 
       <p className="text-xs text-muted-foreground">{progress.description}</p>

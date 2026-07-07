@@ -100,3 +100,35 @@ export async function getContractSignatureStatus(contractId: string) {
 
   return response.data;
 }
+
+export async function resendContractSignatureNotification(contractId: string) {
+  const response = await api.post<{ contract: Contract }>(
+    `/contracts/${contractId}/signature/resend-notification`,
+  );
+
+  return response.data.contract;
+}
+
+export async function cancelContractSignature(contractId: string) {
+  const response = await api.post<{ contract: Contract }>(
+    `/contracts/${contractId}/signature/cancel`,
+  );
+
+  return response.data.contract;
+}
+
+export async function restartContractSignature(contractId: string) {
+  const response = await api.post<{ contract: Contract }>(
+    `/contracts/${contractId}/signature/restart`,
+  );
+
+  return response.data.contract;
+}
+
+export async function reopenContractDataFromSignature(contractId: string) {
+  const response = await api.post<{ contract: Contract }>(
+    `/contracts/${contractId}/signature/reopen-contract-data`,
+  );
+
+  return response.data.contract;
+}

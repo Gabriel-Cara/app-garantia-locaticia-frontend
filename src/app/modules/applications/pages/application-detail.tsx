@@ -214,7 +214,7 @@ export function ApplicationDetailPage({
     isAdmin &&
     application.contract?.id &&
     application.contract?.status === "GENERATED" &&
-    ["NOT_SENT", "ERROR", "CANCELLED"].includes(signatureStatus);
+    ["NOT_SENT"].includes(signatureStatus);
 
   const requesterName =
     application.requester?.realEstateProfile?.name ??

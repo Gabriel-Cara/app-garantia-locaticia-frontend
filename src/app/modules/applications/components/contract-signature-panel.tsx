@@ -1,16 +1,39 @@
-import { useQuery } from "@tanstack/react-query";
+// React Query
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+// Icons
 import {
+  Ban,
   CheckCircle2,
   Clock3,
   PenLine,
+  RotateCcw,
+  Send,
   TriangleAlert,
+  Wrench,
   XCircle,
 } from "lucide-react";
 
+// Components
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getContractSignatureStatus } from "@/services/contracts";
+import { Button } from "@/components/ui/button";
+
+// Services
+import {
+  cancelContractSignature,
+  getContractSignatureStatus,
+  reopenContractDataFromSignature,
+  resendContractSignatureNotification,
+  restartContractSignature,
+} from "@/services/contracts";
+import { getApiErrorMessage } from "@/services/api";
+
+// Types
 import type { Contract, ContractSigner } from "@/types/doculoc";
+
+// Libs
 import { formatDate } from "@/lib/format";
+import { toast } from "sonner";
 
 type ContractSignaturePanelProps = {
   contract: Contract;
@@ -23,6 +46,7 @@ const signatureStatusLabel: Record<string, string> = {
   SENT: "Enviado para assinatura",
   PARTIALLY_SIGNED: "Parcialmente assinado",
   SIGNED: "Assinado",
+  ACTION_REQUIRED: "Ação necessária",
   REFUSED: "Recusado",
   CANCELLED: "Cancelado",
   ERROR: "Erro",
@@ -38,6 +62,8 @@ const signerStatusLabel: Record<string, string> = {
   PENDING: "Pendente",
   SENT: "Enviado",
   SIGNED: "Assinado",
+  ACTION_REQUIRED: "Ação necessária",
+  AUTHENTICATION_FAILED: "Falha na autenticação/biometria",
   REFUSED: "Recusado",
   CANCELLED: "Cancelado",
   ERROR: "Erro",
@@ -48,7 +74,13 @@ function SignatureStatusIcon({ status }: { status?: string | null }) {
     return <CheckCircle2 className="size-4 text-emerald-600" />;
   }
 
-  if (status === "REFUSED" || status === "CANCELLED" || status === "ERROR") {
+  if (
+    status === "REFUSED" ||
+    status === "CANCELLED" ||
+    status === "ERROR" ||
+    status === "ACTION_REQUIRED" ||
+    status === "AUTHENTICATION_FAILED"
+  ) {
     return <XCircle className="size-4 text-rose-600" />;
   }
 
@@ -80,7 +112,9 @@ function SignerRow({ signer }: { signer: ContractSigner }) {
 
 export function ContractSignaturePanel({
   contract,
+  isAdmin = false,
 }: ContractSignaturePanelProps) {
+  const queryClient = useQueryClient();
   const signatureQuery = useQuery({
     queryKey: ["contract-signature", contract.id],
     queryFn: () => getContractSignatureStatus(contract.id),
@@ -98,6 +132,77 @@ export function ContractSignaturePanel({
   const signers = signatureQuery.data?.signers ?? contract.signers ?? [];
 
   const signatureStatus = currentContract.signatureStatus ?? "NOT_SENT";
+
+  async function invalidateSignature() {
+    await queryClient.invalidateQueries({
+      queryKey: ["contract-signature", contract.id],
+    });
+
+    await queryClient.invalidateQueries({
+      queryKey: ["rental-applications"],
+    });
+  }
+
+  const resendMutation = useMutation({
+    mutationFn: () => resendContractSignatureNotification(contract.id),
+    onSuccess: async () => {
+      await invalidateSignature();
+      toast.success("Notificação reenviada.");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelContractSignature(contract.id),
+    onSuccess: async () => {
+      await invalidateSignature();
+      toast.success("Assinatura cancelada.");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const restartMutation = useMutation({
+    mutationFn: () => restartContractSignature(contract.id),
+    onSuccess: async () => {
+      await invalidateSignature();
+      toast.success("Novo envio de assinatura criado.");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const reopenDataMutation = useMutation({
+    mutationFn: () => reopenContractDataFromSignature(contract.id),
+    onSuccess: async () => {
+      await invalidateSignature();
+      toast.success("Dados do contrato reabertos para correção.");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const hasActionRequired =
+    signatureStatus === "ACTION_REQUIRED" ||
+    signers.some((signer) =>
+      ["ACTION_REQUIRED", "AUTHENTICATION_FAILED", "REFUSED", "ERROR"].includes(
+        signer.status,
+      ),
+    );
+
+  const canManageSignature =
+    isAdmin &&
+    [
+      "SENT",
+      "PARTIALLY_SIGNED",
+      "ACTION_REQUIRED",
+      "ERROR",
+      "REFUSED",
+      "CANCELLED",
+    ].includes(signatureStatus);
+
+  const isMutating =
+    resendMutation.isPending ||
+    cancelMutation.isPending ||
+    restartMutation.isPending ||
+    reopenDataMutation.isPending;
 
   return (
     <Card className="bg-white/85 shadow-sm">
@@ -125,6 +230,20 @@ export function ContractSignaturePanel({
           </div>
         ) : null}
 
+        {hasActionRequired ? (
+          <div className="flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+            <div>
+              <p className="font-medium">Ação necessária na assinatura</p>
+              <p>
+                Algum signatário teve falha, recusa ou autenticação não
+                concluída. Você pode reenviar o e-mail, cancelar, refazer o
+                envio ou reabrir os dados do contrato para correção.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         {currentContract.sentToSignatureAt ? (
           <p className="text-sm text-muted-foreground">
             Enviado em {formatDate(currentContract.sentToSignatureAt)}
@@ -148,6 +267,51 @@ export function ContractSignaturePanel({
             Os signatários aparecerão aqui após o envio para assinatura.
           </p>
         )}
+
+        {canManageSignature ? (
+          <div className="grid gap-2 border-t pt-4 sm:grid-cols-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isMutating}
+              onClick={() => resendMutation.mutate()}
+            >
+              <Send className="size-4" />
+              Reenviar e-mail
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isMutating}
+              onClick={() => restartMutation.mutate()}
+            >
+              <RotateCcw className="size-4" />
+              Refazer envio
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isMutating}
+              onClick={() => reopenDataMutation.mutate()}
+            >
+              <Wrench className="size-4" />
+              Corrigir dados
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              disabled={isMutating}
+              onClick={() => cancelMutation.mutate()}
+            >
+              <Ban className="size-4" />
+              Cancelar assinatura
+            </Button>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
