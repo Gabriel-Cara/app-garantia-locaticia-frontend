@@ -1,12 +1,12 @@
 // React
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
 import { useEffect, useState } from "react";
 
 // Libs
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useFieldArray, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Helmet } from "react-helmet-async";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -22,7 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 // Utils
-import { formatDocument, formatDocumentInput, onlyDigits } from "@/lib/format";
+import {
+  formatDocument,
+  formatDocumentInput,
+  formatPhoneInput,
+  formatCepInput,
+  onlyDigits,
+} from "@/lib/format";
 import type { ContractDataBody } from "@/types/doculoc";
 
 // Services
@@ -74,7 +80,18 @@ export function ContractDataPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const form = useForm<ContractDataForm>({
+  const {
+    watch,
+    reset,
+    control,
+    setValue,
+    getValues,
+    setFocus,
+    clearErrors,
+    handleSubmit,
+    register,
+    formState: { errors },
+  } = useForm<ContractDataForm>({
     resolver: zodResolver(contractDataSchema),
     defaultValues: {
       tenants: [
@@ -97,13 +114,14 @@ export function ContractDataPage() {
   });
 
   const tenantsFieldArray = useFieldArray({
-    control: form.control,
+    control: control,
     name: "tenants",
   });
 
   const [isFetchingCep, setIsFetchingCep] = useState(false);
 
-  const propertyZipCode = form.watch("propertyZipCode");
+  const propertyZipCode = watch("propertyZipCode") ?? "";
+  const tenants = watch("tenants") ?? [];
 
   const { data: application } = useQuery({
     queryKey: ["rental-application", applicationId],
@@ -120,7 +138,7 @@ export function ContractDataPage() {
             name: tenant.name,
             document: formatDocumentInput(tenant.document),
             email: tenant.email,
-            phone: tenant.phone,
+            phone: formatPhoneInput(tenant.phone ?? ""),
           }))
         : [
             {
@@ -129,13 +147,13 @@ export function ContractDataPage() {
                 application.tenantDocument ?? application.document ?? "",
               ),
               email: application.tenantEmail ?? "",
-              phone: application.tenantPhone ?? "",
+              phone: formatPhoneInput(application.tenantPhone ?? ""),
             },
           ];
 
-    form.reset({
+    reset({
       tenants,
-      propertyZipCode: application.propertyZipCode ?? "",
+      propertyZipCode: formatCepInput(application.propertyZipCode ?? ""),
       propertyStreet: application.propertyStreet ?? "",
       propertyNumber: application.propertyNumber ?? "",
       propertyComplement: application.propertyComplement ?? "",
@@ -144,11 +162,12 @@ export function ContractDataPage() {
       propertyState: application.propertyState ?? "",
       adhesionFee: Number(application.adhesionFee ?? 0),
     });
-  }, [application, form]);
+  }, [application, reset]);
 
   useEffect(() => {
-    const cleanZipCode = propertyZipCode.replace(/\D/g, "");
-    if (cleanZipCode.length !== 8) return;
+    const cleanZipCode = onlyDigits(propertyZipCode);
+
+    if (!cleanZipCode || cleanZipCode.length !== 8) return;
 
     const timeout = window.setTimeout(async () => {
       try {
@@ -156,33 +175,33 @@ export function ContractDataPage() {
 
         const address = await fetchAddressByCep(cleanZipCode);
 
-        form.setValue("propertyStreet", address.street, {
+        setValue("propertyStreet", address.street, {
           shouldValidate: true,
           shouldDirty: true,
         });
-        form.setValue("propertyNeighborhood", address.neighborhood, {
+        setValue("propertyNeighborhood", address.neighborhood, {
           shouldValidate: true,
           shouldDirty: true,
         });
-        form.setValue("propertyCity", address.city, {
+        setValue("propertyCity", address.city, {
           shouldValidate: true,
           shouldDirty: true,
         });
-        form.setValue("propertyState", address.state, {
+        setValue("propertyState", address.state, {
           shouldValidate: true,
           shouldDirty: true,
         });
 
-        const currentComplement = form.getValues("propertyComplement");
+        const currentComplement = getValues("propertyComplement");
 
         if (!currentComplement && address.complement) {
-          form.setValue("propertyComplement", address.complement, {
+          setValue("propertyComplement", address.complement, {
             shouldValidate: true,
             shouldDirty: true,
           });
         }
 
-        form.setFocus("propertyNumber");
+        setFocus("propertyNumber");
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -195,7 +214,7 @@ export function ContractDataPage() {
     }, 500);
 
     return () => window.clearTimeout(timeout);
-  }, [propertyZipCode, form]);
+  }, [propertyZipCode, setValue, getValues, setFocus]);
 
   const mutation = useMutation({
     mutationFn: (values: ContractDataBody) =>
@@ -215,15 +234,41 @@ export function ContractDataPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  function handleSubmit(values: ContractDataForm) {
-    mutation.mutate(values);
+  function handleContractData(values: ContractDataForm) {
+    mutation.mutate({
+      ...values,
+      propertyZipCode: onlyDigits(values.propertyZipCode),
+      tenants: values.tenants.map((tenant) => ({
+        ...tenant,
+        document: onlyDigits(tenant.document),
+        phone: onlyDigits(tenant.phone),
+      })),
+    });
   }
 
   function handleTenantDocumentChange(index: number, value: string) {
-    form.setValue(`tenants.${index}.document`, formatDocumentInput(value), {
+    setValue(`tenants.${index}.document`, formatDocumentInput(value), {
       shouldDirty: true,
     });
-    form.clearErrors(`tenants.${index}.document`);
+    clearErrors(`tenants.${index}.document`);
+  }
+
+  function handleTenantPhoneChange(index: number, value: string) {
+    setValue(`tenants.${index}.phone`, formatPhoneInput(value), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    clearErrors(`tenants.${index}.phone`);
+  }
+
+  function handlePropertyZipCodeChange(value: string) {
+    setValue("propertyZipCode", formatCepInput(value), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    clearErrors("propertyZipCode");
   }
 
   const isAllowed = application?.status === "WAITING_CONTRACT_DATA";
@@ -261,7 +306,7 @@ export function ContractDataPage() {
         </Alert>
       ) : null}
 
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-5">
+      <form onSubmit={handleSubmit(handleContractData)} className="grid gap-5">
         <Card className="bg-white/85 shadow-sm">
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -292,7 +337,7 @@ export function ContractDataPage() {
 
           <CardContent className="grid gap-5">
             {tenantsFieldArray.fields.map((field, index) => {
-              const tenantDocument = form.watch(`tenants.${index}.document`);
+              const tenantDocument = watch(`tenants.${index}.document`);
 
               return (
                 <div
@@ -335,12 +380,11 @@ export function ContractDataPage() {
                     <Input
                       id={`tenants.${index}.name`}
                       className="h-11 rounded-2xl"
-                      {...form.register(`tenants.${index}.name`)}
+                      placeholder="Digite o nome completo"
+                      {...register(`tenants.${index}.name`)}
                     />
                     <FieldError
-                      message={
-                        form.formState.errors.tenants?.[index]?.name?.message
-                      }
+                      message={errors.tenants?.[index]?.name?.message}
                     />
                   </div>
 
@@ -354,17 +398,14 @@ export function ContractDataPage() {
                       inputMode="numeric"
                       maxLength={18}
                       placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                      {...form.register(`tenants.${index}.document`)}
+                      {...register(`tenants.${index}.document`)}
                       value={tenantDocument ?? ""}
                       onChange={(event) =>
                         handleTenantDocumentChange(index, event.target.value)
                       }
                     />
                     <FieldError
-                      message={
-                        form.formState.errors.tenants?.[index]?.document
-                          ?.message
-                      }
+                      message={errors.tenants?.[index]?.document?.message}
                     />
                   </div>
 
@@ -373,12 +414,17 @@ export function ContractDataPage() {
                     <Input
                       id={`tenants.${index}.phone`}
                       className="h-11 rounded-2xl"
-                      {...form.register(`tenants.${index}.phone`)}
+                      inputMode="numeric"
+                      maxLength={15}
+                      placeholder="(00) 00000-0000"
+                      {...register(`tenants.${index}.phone`)}
+                      value={tenants[index]?.phone ?? ""}
+                      onChange={(event) =>
+                        handleTenantPhoneChange(index, event.target.value)
+                      }
                     />
                     <FieldError
-                      message={
-                        form.formState.errors.tenants?.[index]?.phone?.message
-                      }
+                      message={errors.tenants?.[index]?.phone?.message}
                     />
                   </div>
 
@@ -388,12 +434,11 @@ export function ContractDataPage() {
                       id={`tenants.${index}.email`}
                       type="email"
                       className="h-11 rounded-2xl"
-                      {...form.register(`tenants.${index}.email`)}
+                      placeholder="Digite o e-mail"
+                      {...register(`tenants.${index}.email`)}
                     />
                     <FieldError
-                      message={
-                        form.formState.errors.tenants?.[index]?.email?.message
-                      }
+                      message={errors.tenants?.[index]?.email?.message}
                     />
                   </div>
                 </div>
@@ -418,11 +463,16 @@ export function ContractDataPage() {
               <Input
                 id="propertyZipCode"
                 className="h-11 rounded-2xl"
-                {...form.register("propertyZipCode")}
+                inputMode="numeric"
+                maxLength={9}
+                placeholder="00000-000"
+                {...register("propertyZipCode")}
+                value={propertyZipCode}
+                onChange={(event) =>
+                  handlePropertyZipCodeChange(event.target.value)
+                }
               />
-              <FieldError
-                message={form.formState.errors.propertyZipCode?.message}
-              />
+              <FieldError message={errors.propertyZipCode?.message} />
               {isFetchingCep ? (
                 <p className="text-xs text-muted-foreground">
                   Buscando endereço...
@@ -434,29 +484,28 @@ export function ContractDataPage() {
               <Input
                 id="propertyStreet"
                 className="h-11 rounded-2xl"
-                {...form.register("propertyStreet")}
+                placeholder="Digite o nome da rua ou avenida"
+                {...register("propertyStreet")}
               />
-              <FieldError
-                message={form.formState.errors.propertyStreet?.message}
-              />
+              <FieldError message={errors.propertyStreet?.message} />
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="propertyNumber">Número</Label>
               <Input
                 id="propertyNumber"
                 className="h-11 rounded-2xl"
-                {...form.register("propertyNumber")}
+                placeholder="Digite o número do imóvel"
+                {...register("propertyNumber")}
               />
-              <FieldError
-                message={form.formState.errors.propertyNumber?.message}
-              />
+              <FieldError message={errors.propertyNumber?.message} />
             </div>
             <div className="space-y-2 md:col-span-4">
               <Label htmlFor="propertyComplement">Complemento</Label>
               <Input
                 id="propertyComplement"
                 className="h-11 rounded-2xl"
-                {...form.register("propertyComplement")}
+                placeholder="Digite o complemento"
+                {...register("propertyComplement")}
               />
             </div>
             <div className="space-y-2 md:col-span-2">
@@ -464,22 +513,20 @@ export function ContractDataPage() {
               <Input
                 id="propertyNeighborhood"
                 className="h-11 rounded-2xl"
-                {...form.register("propertyNeighborhood")}
+                placeholder="Digite o nome do bairro"
+                {...register("propertyNeighborhood")}
               />
-              <FieldError
-                message={form.formState.errors.propertyNeighborhood?.message}
-              />
+              <FieldError message={errors.propertyNeighborhood?.message} />
             </div>
             <div className="space-y-2 md:col-span-3">
               <Label htmlFor="propertyCity">Cidade</Label>
               <Input
                 id="propertyCity"
                 className="h-11 rounded-2xl"
-                {...form.register("propertyCity")}
+                placeholder="Digite o nome da cidade"
+                {...register("propertyCity")}
               />
-              <FieldError
-                message={form.formState.errors.propertyCity?.message}
-              />
+              <FieldError message={errors.propertyCity?.message} />
             </div>
             <div className="space-y-2 md:col-span-1">
               <Label htmlFor="propertyState">UF</Label>
@@ -487,11 +534,10 @@ export function ContractDataPage() {
                 id="propertyState"
                 className="h-11 rounded-2xl uppercase"
                 maxLength={2}
-                {...form.register("propertyState")}
+                placeholder="Digite a sigla do estado"
+                {...register("propertyState")}
               />
-              <FieldError
-                message={form.formState.errors.propertyState?.message}
-              />
+              <FieldError message={errors.propertyState?.message} />
             </div>
           </CardContent>
         </Card>
@@ -510,11 +556,9 @@ export function ContractDataPage() {
                 min="0"
                 step="0.01"
                 className="h-11 rounded-2xl"
-                {...form.register("adhesionFee", { valueAsNumber: true })}
+                {...register("adhesionFee", { valueAsNumber: true })}
               />
-              <FieldError
-                message={form.formState.errors.adhesionFee?.message}
-              />
+              <FieldError message={errors.adhesionFee?.message} />
             </div>
           </CardContent>
         </Card>
