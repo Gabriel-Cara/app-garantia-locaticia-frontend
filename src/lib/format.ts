@@ -99,3 +99,30 @@ export function normalizeReasons(reasons?: string[] | string | null) {
     return [String(reasons)];
   }
 }
+
+export function formatPhoneInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length <= 10) {
+    return digits.replace(
+      /^(\d{0,2})(\d{0,4})(\d{0,4}).*/,
+      (_, ddd, part1, part2) => {
+        if (!ddd) return "";
+        if (!part1) return `(${ddd}`;
+        if (!part2) return `(${ddd}) ${part1}`;
+        return `(${ddd}) ${part1}-${part2}`;
+      },
+    );
+  }
+
+  return digits.replace(
+    /^(\d{2})(\d{5})(\d{0,4}).*/,
+    "($1) $2-$3",
+  );
+}
+
+export function formatCepInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  return digits.replace(/^(\d{5})(\d{0,3}).*/, "$1-$2");
+}

@@ -1,4 +1,8 @@
+// React
+import { useEffect, useState } from "react";
+
 // Components
+import { PasswordInputGroup } from "./password-input-group";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,
@@ -20,37 +24,54 @@ import { Building2, FileText, Loader2, Mail, SquareUser } from "lucide-react";
 import { signUp } from "@/api/sign-up";
 
 // Libs
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
+import {
+  formatCepInput,
+  formatDocumentInput,
+  formatPhoneInput,
+} from "@/lib/format";
 import { useForm } from "react-hook-form";
-import { fetchAddressByCep } from "@/services/cep";
-import { formatDocumentInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { z } from "zod";
-import { useEffect, useState } from "react";
-import { PasswordInputGroup } from "./password-input-group";
+
+// Services
+import { getApiErrorCode, getApiErrorMessage } from "@/services/api";
+import { fetchAddressByCep } from "@/services/cep";
 
 const signUpForm = z.object({
-  email: z.email(),
-  password: z.string().min(8),
-  role: z.enum(["REAL_ESTATE", "ADMIN"]),
-  realEstateProfile: z
-    .object({
-      name: z.string(),
-      cnpj: z.string(),
-      phone: z.string(),
-      responsibleName: z.string(),
+  email: z.email("Informe um e-mail válido."),
 
-      zipCode: z.string().optional(),
-      street: z.string().optional(),
-      number: z.string().optional(),
-      complement: z.string().optional(),
-      neighborhood: z.string().optional(),
-      city: z.string().optional(),
-      state: z.string().optional(),
-    })
-    .optional(),
+  password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
+
+  role: z.enum(["REAL_ESTATE", "ADMIN"]),
+
+  realEstateProfile: z.object({
+    name: z.string().min(3, "Informe o nome da imobiliária."),
+
+    cnpj: z
+      .string()
+      .optional()
+      .refine((value) => {
+        const digits = value?.replace(/\D/g, "") ?? "";
+
+        return digits.length === 0 || digits.length === 14;
+      }, "Informe um CNPJ válido ou deixe o campo vazio."),
+
+    phone: z.string().min(8, "Informe um telefone válido."),
+
+    responsibleName: z.string().min(3, "Informe o nome do responsável."),
+
+    zipCode: z.string().optional(),
+    street: z.string().optional(),
+    number: z.string().optional(),
+    complement: z.string().optional(),
+    neighborhood: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+  }),
 });
 
 type SignUpForm = z.infer<typeof signUpForm>;
@@ -68,9 +89,11 @@ export function RegisterForm({
     getValues,
     setValue,
     setFocus,
+    setError,
     watch,
     formState: { isSubmitting, errors },
   } = useForm<SignUpForm>({
+    resolver: zodResolver(signUpForm),
     defaultValues: {
       email: "",
       password: "",
@@ -80,7 +103,6 @@ export function RegisterForm({
         cnpj: "",
         phone: "",
         responsibleName: "",
-
         zipCode: "",
         street: "",
         number: "",
@@ -92,13 +114,14 @@ export function RegisterForm({
     },
   });
 
-  const realEstateZipCode = watch("realEstateProfile.zipCode");
+  const realEstateZipCode = watch("realEstateProfile.zipCode") ?? "";
   const realEstateCnpj = watch("realEstateProfile.cnpj") ?? "";
+  const realEstatePhone = watch("realEstateProfile.phone") ?? "";
 
   useEffect(() => {
     const cleanZipCode = realEstateZipCode?.replace(/\D/g, "");
 
-    if (cleanZipCode && cleanZipCode.length !== 8) return;
+    if (!cleanZipCode || cleanZipCode.length !== 8) return;
 
     const timeout = window.setTimeout(async () => {
       try {
@@ -134,7 +157,15 @@ export function RegisterForm({
 
   async function handleSignUp(data: SignUpForm) {
     try {
-      await createUser(data);
+      const payload = {
+        ...data,
+        realEstateProfile: {
+          ...data.realEstateProfile,
+          cnpj: data.realEstateProfile.cnpj ?? "",
+        },
+      };
+
+      await createUser(payload as any);
 
       toast.success("Cadastro realizado com sucesso!", {
         action: {
@@ -143,14 +174,50 @@ export function RegisterForm({
         },
       });
     } catch (error) {
-      toast.error("Erro ao cadastrar usuário!");
-      console.log(error);
+      const code = getApiErrorCode(error);
+      const message = getApiErrorMessage(error);
+
+      if (code === "EMAIL_ALREADY_USED") {
+        setError("email", {
+          type: "server",
+          message: "Este e-mail já está cadastrado.",
+        });
+
+        toast.error("Este e-mail já está cadastrado.");
+        return;
+      }
+
+      if (code === "CNPJ_ALREADY_USED") {
+        setError("realEstateProfile.cnpj", {
+          type: "server",
+          message: "Este CNPJ já está cadastrado.",
+        });
+
+        toast.error("Este CNPJ já está cadastrado.");
+        return;
+      }
+
+      toast.error(message || "Não foi possível realizar o cadastro.");
     }
   }
 
   function handleCnpjChange(value: string) {
     setValue("realEstateProfile.cnpj", formatDocumentInput(value, "CNPJ"), {
       shouldDirty: true,
+    });
+  }
+
+  function handlePhoneChange(value: string) {
+    setValue("realEstateProfile.phone", formatPhoneInput(value), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }
+
+  function handleZipCodeChange(value: string) {
+    setValue("realEstateProfile.zipCode", formatCepInput(value), {
+      shouldDirty: true,
+      shouldValidate: true,
     });
   }
 
@@ -210,6 +277,11 @@ export function RegisterForm({
             />
           </InputGroup>
         </Field>
+        {errors.realEstateProfile?.cnpj ? (
+          <FieldDescription className="text-rose-500">
+            {errors.realEstateProfile.cnpj.message}
+          </FieldDescription>
+        ) : null}
         <Field>
           <FieldLabel htmlFor="responsible-name">
             Nome do responsável
@@ -241,9 +313,13 @@ export function RegisterForm({
             <InputGroupInput
               id="phone"
               type="text"
+              inputMode="numeric"
+              maxLength={15}
               placeholder="(00) 00000-0000"
               required
               {...register("realEstateProfile.phone")}
+              value={realEstatePhone}
+              onChange={(event) => handlePhoneChange(event.target.value)}
             />
           </InputGroup>
         </Field>
@@ -263,8 +339,12 @@ export function RegisterForm({
             <InputGroupInput
               id="real-estate-zipcode"
               type="text"
+              inputMode="numeric"
+              maxLength={9}
               placeholder="00000-000"
               {...register("realEstateProfile.zipCode")}
+              value={realEstateZipCode}
+              onChange={(event) => handleZipCodeChange(event.target.value)}
             />
           </InputGroup>
         </Field>
