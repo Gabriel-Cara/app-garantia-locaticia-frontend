@@ -135,6 +135,9 @@ export function ApplicationsPage({
         page: 1,
         perPage: 50,
       }),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: tableMode === "contracts" ? 30_000 : false,
   });
 
   const deleteMutation = useMutation({
