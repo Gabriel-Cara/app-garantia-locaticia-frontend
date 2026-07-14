@@ -99,7 +99,7 @@ async function waitForConsultResult(
     }
 
     if (status.status === "FAILED") {
-      throw new Error(status.message || "A consulta falhou na Órago.");
+      throw new Error(status.message || "A pré-análise falhou.");
     }
 
     await sleep(delayMs);

@@ -27,12 +27,10 @@ import { ContractSignaturePanel } from "../components/contract-signature-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AdminDecisionDialog } from "../components/admin-decision-dialog";
 import { RentalValuesDialog } from "../components/rental-values-dialog";
+import { FlowStatusBadge } from "../components/flow-status-badge";
+import { getFlowStatus } from "../components/get-flow-status";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import {
-  ApplicationStatusBadge,
-  RecommendationBadge,
-} from "../components/application-status-badge";
 import {
   EmptyState,
   PageHeader,
@@ -46,10 +44,6 @@ import {
   formatDocument,
   normalizeReasons,
 } from "@/lib/format";
-import {
-  applicationStatusDescriptions,
-  applicationStatusLabels,
-} from "@/lib/status";
 
 // Services
 import { DeleteApplicationDialog } from "../components/delete-application-dialog";
@@ -63,6 +57,7 @@ import {
   getRentalApplication,
   deleteRentalApplication,
 } from "@/services/rental-applications";
+import { TechnicalStatusAccordion } from "../components/technical-status-accordion";
 
 function DetailItem({
   label,
@@ -221,6 +216,8 @@ export function ApplicationDetailPage({
     application.requester?.name ??
     "Imobiliária";
 
+  const flowStatus = getFlowStatus(application);
+
   return (
     <PageShell>
       <Helmet title="Detalhes da Consulta" />
@@ -235,7 +232,7 @@ export function ApplicationDetailPage({
         <PageHeader
           eyebrow={isAdmin ? "Detalhe administrativo" : "Detalhe da consulta"}
           title={formatDocument(application.document, application.documentType)}
-          description={applicationStatusDescriptions[application.status]}
+          description={flowStatus.description}
           action={
             <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap">
               {canFillContract ? (
@@ -322,18 +319,16 @@ export function ApplicationDetailPage({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        {/* Resumo da consulta */}
         <Card className="flashlight-card bg-white/85 shadow-sm">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-xl">
                 <ShieldCheck className="size-5 text-primary" />
-                Resultado da análise
+                Resumo da consulta
               </CardTitle>
               <div className="flex flex-wrap gap-2">
-                <RecommendationBadge
-                  recommendation={application.recommendation}
-                />
-                <ApplicationStatusBadge status={application.status} />
+                <FlowStatusBadge application={application} />
               </div>
             </div>
           </CardHeader>
@@ -392,66 +387,41 @@ export function ApplicationDetailPage({
           </CardContent>
         </Card>
 
-        <div className="grid gap-5">
-          <Card className="bg-white/85 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="size-5 text-primary" />
-                Linha do tempo
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <DetailItem
-                label="Status atual"
-                value={applicationStatusLabels[application.status]}
-              />
-              <DetailItem
-                label="Criada em"
-                value={formatDate(application.createdAt)}
-              />
-              <DetailItem
-                label="Atualizada em"
-                value={formatDate(application.updatedAt)}
-              />
-              {application.adminDecisionReason ? (
-                <Alert className="border-primary/20 bg-primary/5">
-                  <AlertTitle>Decisão administrativa</AlertTitle>
-                  <AlertDescription>
-                    {application.adminDecisionReason}
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-            </CardContent>
-          </Card>
+        {/* Linha do tempo */}
+        <Card className="bg-white/85 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="size-5 text-primary" />
+              Linha do tempo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FlowStatusBadge application={application} showDescription />
 
-          {isAdmin ? (
-            <Card className="bg-white/85 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="size-5 text-primary" />
-                  Imobiliária
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <DetailItem label="Nome" value={requesterName} />
-                <DetailItem
-                  label="E-mail"
-                  value={application.requester?.email}
-                />
-                <DetailItem
-                  label="CNPJ"
-                  value={formatDocument(
-                    application.requester?.realEstateProfile?.cnpj ?? undefined,
-                    "CNPJ",
-                  )}
-                />
-              </CardContent>
-            </Card>
-          ) : null}
-        </div>
-      </div>
+            <TechnicalStatusAccordion application={application} />
 
-      <div className="grid gap-5 lg:grid-cols-2">
+            <DetailItem
+              label="Criada em"
+              value={formatDate(application.createdAt)}
+            />
+
+            <DetailItem
+              label="Atualizada em"
+              value={formatDate(application.updatedAt)}
+            />
+
+            {application.adminDecisionReason ? (
+              <Alert className="border-primary/20 bg-primary/5">
+                <AlertTitle>Decisão administrativa</AlertTitle>
+                <AlertDescription>
+                  {application.adminDecisionReason}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        {/* Dados para contrato */}
         <Card className="bg-white/85 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -495,6 +465,30 @@ export function ApplicationDetailPage({
           </CardContent>
         </Card>
 
+        {/* Imobiliária */}
+        {isAdmin ? (
+          <Card className="bg-white/85 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="size-5 text-primary" />
+                Imobiliária
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <DetailItem label="Nome" value={requesterName} />
+              <DetailItem label="E-mail" value={application.requester?.email} />
+              <DetailItem
+                label="CNPJ"
+                value={formatDocument(
+                  application.requester?.realEstateProfile?.cnpj ?? undefined,
+                  "CNPJ",
+                )}
+              />
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Assinatura do Contrato */}
         {application.contract ? (
           <ContractSignaturePanel
             contract={application.contract}
@@ -502,6 +496,7 @@ export function ApplicationDetailPage({
           />
         ) : null}
 
+        {/* Contestações */}
         <Card className="bg-white/85 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

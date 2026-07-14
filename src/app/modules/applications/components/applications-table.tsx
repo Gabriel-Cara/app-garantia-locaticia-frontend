@@ -14,13 +14,10 @@ import {
 } from "@tanstack/react-table";
 
 // Components
+import { FlowStatusBadge, FlowStatusSummary } from "./flow-status-badge";
 import { DeleteApplicationDialog } from "./delete-application-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import {
-  ApplicationStatusBadge,
-  RecommendationBadge,
-} from "./application-status-badge";
 import {
   Table,
   TableBody,
@@ -194,6 +191,35 @@ function ContractSignatureProgress({
   );
 }
 
+function FlowStatusWithSignatureProgress({
+  application,
+}: {
+  application: RentalApplication;
+}) {
+  const signatureStatus = application.contract?.signatureStatus;
+
+  const shouldShowSignatureProgress = [
+    "ENVELOPE_CREATED",
+    "SENT",
+    "PARTIALLY_SIGNED",
+    "SIGNED",
+    "ACTION_REQUIRED",
+    "ERROR",
+    "REFUSED",
+    "CANCELLED",
+  ].includes(signatureStatus ?? "");
+
+  return (
+    <div className="min-w-48 space-y-2">
+      <FlowStatusBadge application={application} />
+
+      {shouldShowSignatureProgress ? (
+        <ContractSignatureProgress application={application} />
+      ) : null}
+    </div>
+  );
+}
+
 function ApplicationMobileCard({
   application,
   basePath,
@@ -223,11 +249,8 @@ function ApplicationMobileCard({
             {getApplicationSubjectName(application)}
           </p>
           {tableMode === "contracts" ? null : (
-            <div className="mt-2 flex flex-wrap gap-2">
-              <RecommendationBadge
-                recommendation={application.recommendation}
-              />
-              <ApplicationStatusBadge status={application.status} />
+            <div className="mt-2">
+              <FlowStatusBadge application={application} />
             </div>
           )}
         </div>
@@ -253,8 +276,10 @@ function ApplicationMobileCard({
         />
         {tableMode === "contracts" ? (
           <MobileInfo
-            label="Status"
-            value={<ContractSignatureProgress application={application} />}
+            label="Status atual"
+            value={
+              <FlowStatusWithSignatureProgress application={application} />
+            }
           />
         ) : null}
         {tableMode !== "contracts" ? (
@@ -383,10 +408,10 @@ export function ApplicationsTable({
           ),
         },
         {
-          id: "signatureProgress",
-          header: "Status",
+          id: "flowStatus",
+          header: "Status atual",
           cell: ({ row }) => (
-            <ContractSignatureProgress application={row.original} />
+            <FlowStatusWithSignatureProgress application={row.original} />
           ),
         },
         {
@@ -483,18 +508,9 @@ export function ApplicationsTable({
         ),
       },
       {
-        accessorKey: "recommendation",
-        header: "Órago",
-        cell: ({ row }) => (
-          <RecommendationBadge recommendation={row.original.recommendation} />
-        ),
-      },
-      {
-        accessorKey: "status",
-        header: "Doculoc",
-        cell: ({ row }) => (
-          <ApplicationStatusBadge status={row.original.status} />
-        ),
+        id: "flowStatus",
+        header: "Status atual",
+        cell: ({ row }) => <FlowStatusSummary application={row.original} />,
       },
       {
         accessorKey: "createdAt",

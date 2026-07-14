@@ -128,9 +128,9 @@ export function NewApplicationPage() {
             : "Consulta enviada para análise manual.",
         {
           description: approved
-            ? "A Órago recomendou a análise e a despesa está dentro do limite permitido."
+            ? "A pré-análise recomendou e a despesa está dentro do limite permitido."
             : rejected
-              ? "Acesse os detalhes para verificar se a reprovação veio da Órago ou da regra de moradia Doculoc."
+              ? "Acesse os detalhes para verificar se a reprovação veio da pré-análise ou da regra de moradia Doculoc."
               : "A análise precisa de revisão manual.",
         },
       );
@@ -315,8 +315,8 @@ export function NewApplicationPage() {
                 <ShieldCheck className="size-4" />
                 <AlertTitle>Consumo de crédito</AlertTitle>
                 <AlertDescription>
-                  Cada consulta consome 1 crédito. A análise pode levar alguns
-                  minutos enquanto a Órago processa os dados. Mantenha esta tela
+                  Cada consulta consome 1 crédito. A pré-análise pode levar alguns
+                  minutos enquanto processa os dados. Mantenha esta tela
                   aberta até o resultado.
                 </AlertDescription>
               </Alert>
