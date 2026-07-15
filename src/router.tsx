@@ -132,6 +132,45 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    path: "/account-executive",
+    element: <AppLayout expectedRole="ACCOUNT_EXECUTIVE" />,
+    errorElement: <Error />,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/account-executive/consultas" replace />,
+      },
+      {
+        path: "consultas",
+        element: (
+          <ApplicationsPage
+            isReadOnly
+            eyebrow="Acompanhamento"
+            title="Consultas"
+            description="Visualize consultas, contratos e andamentos sem permissão para alterações."
+          />
+        ),
+      },
+      {
+        path: "contratos",
+        element: (
+          <ApplicationsPage
+            isReadOnly
+            forcedStatuses={["WAITING_ADMIN_CONTRACT", "CONTRACT_GENERATED"]}
+            tableMode="contracts"
+            eyebrow="Contratos"
+            title="Contratos"
+            description="Acompanhe contratos gerados e processos de assinatura eletrônica."
+          />
+        ),
+      },
+      {
+        path: "consultas/:applicationId",
+        element: <ApplicationDetailPage isReadOnly />,
+      },
+    ],
+  },
+  {
     path: "/real-estate/*",
     element: <Navigate to="/real_estate/dashboard" replace />,
   },

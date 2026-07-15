@@ -94,6 +94,7 @@ function applicationMatchesSearch(
 
 interface IApplicationsPage {
   isAdmin?: boolean;
+  isReadOnly?: boolean;
   forcedStatus?: RentalApplicationStatus;
   forcedStatuses?: RentalApplicationStatus[];
   tableMode?: ApplicationsTableMode;
@@ -106,6 +107,7 @@ type ApplicationsTableMode = "default" | "contracts";
 
 export function ApplicationsPage({
   isAdmin = false,
+  isReadOnly = false,
   forcedStatus,
   forcedStatuses,
   tableMode = "default",
@@ -118,7 +120,13 @@ export function ApplicationsPage({
   const [status, setStatus] = useState<RentalApplicationStatus | "ALL">(
     forcedStatus ?? "ALL",
   );
-  const basePath = isAdmin ? "/admin" : "/real_estate";
+  const basePath = isReadOnly
+    ? "/account-executive"
+    : isAdmin
+      ? "/admin"
+      : "/real_estate";
+
+  const showRequester = isAdmin || isReadOnly;
   const trimmedSearch = search.trim();
   const documentSearch = isDocumentSearchValue(trimmedSearch)
     ? trimmedSearch
@@ -187,19 +195,30 @@ export function ApplicationsPage({
 
   return (
     <PageShell>
-      <Helmet title={title ?? (isAdmin ? "Consultas" : "Minhas consultas")} />
+      <Helmet
+        title={
+          title ?? (isAdmin || isReadOnly ? "Consultas" : "Minhas consultas")
+        }
+      />
 
       <PageHeader
         eyebrow={
-          eyebrow ?? (isAdmin ? "Operação Admin" : "Carteira de consultas")
+          eyebrow ??
+          (isReadOnly
+            ? "Acompanhamento"
+            : isAdmin
+              ? "Operação Admin"
+              : "Carteira de consultas")
         }
-        title={title ?? (isAdmin ? "Consultas" : "Minhas consultas")}
+        title={
+          title ?? (isAdmin || isReadOnly ? "Consultas" : "Minhas consultas")
+        }
         description={
           description ??
           "Acompanhe o ciclo completo de análise, contestação, preenchimento de dados e geração do contrato."
         }
         action={
-          !isAdmin ? (
+          !isAdmin && !isReadOnly ? (
             <Button
               asChild
               size="lg"
@@ -269,10 +288,14 @@ export function ApplicationsPage({
           applications={applications}
           basePath={basePath}
           isAdmin={isAdmin}
+          isReadOnly={isReadOnly}
+          showRequester={showRequester}
           tableMode={tableMode}
-          onDownloadContract={handleDownload}
-          onDeleteApplication={(application) =>
-            deleteMutation.mutate(application.id)
+          onDownloadContract={isReadOnly ? undefined : handleDownload}
+          onDeleteApplication={
+            isReadOnly
+              ? undefined
+              : (application) => deleteMutation.mutate(application.id)
           }
           deletingApplicationId={
             deleteMutation.isPending ? deleteMutation.variables : null
@@ -284,7 +307,7 @@ export function ApplicationsPage({
           title="Nenhuma consulta encontrada"
           description="Ajuste os filtros ou crie uma nova consulta para iniciar o fluxo de garantia locatícia."
           action={
-            !isAdmin ? (
+            !isAdmin && !isReadOnly ? (
               <Button asChild>
                 <Link to="/real_estate/nova-consulta">
                   Criar primeira consulta

@@ -80,13 +80,19 @@ function DetailItem({
 
 export function ApplicationDetailPage({
   isAdmin = false,
+  isReadOnly = false,
 }: {
   isAdmin?: boolean;
+  isReadOnly?: boolean;
 }) {
   const { applicationId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const basePath = isAdmin ? "/admin" : "/real_estate";
+  const basePath = isReadOnly
+    ? "/account-executive"
+    : isAdmin
+      ? "/admin"
+      : "/real_estate";
 
   const { data: application, isLoading } = useQuery({
     queryKey: ["rental-application", applicationId],
@@ -186,19 +192,22 @@ export function ApplicationDetailPage({
   }
 
   const reasons = normalizeReasons(application.decisionReasons);
-  const canContest = !isAdmin && application.status === "REJECTED";
+  const canContest =
+    !isAdmin && !isReadOnly && application.status === "REJECTED";
   const canFillContract =
-    !isAdmin && application.status === "WAITING_CONTRACT_DATA";
+    !isAdmin && !isReadOnly && application.status === "WAITING_CONTRACT_DATA";
   const canGenerateContract =
-    isAdmin && application.status === "WAITING_ADMIN_CONTRACT";
+    isAdmin && !isReadOnly && application.status === "WAITING_ADMIN_CONTRACT";
   const canEditRentalValues =
-    isAdmin && application.status === "WAITING_ADMIN_CONTRACT";
+    isAdmin && !isReadOnly && application.status === "WAITING_ADMIN_CONTRACT";
   const canAdminDecide =
     isAdmin &&
+    !isReadOnly &&
     ["REJECTED", "CONTESTED", "CONSULTED", "ADMIN_REJECTED"].includes(
       application.status,
     );
   const canDownload =
+    !isReadOnly &&
     application.status === "CONTRACT_GENERATED" &&
     application.contract?.id &&
     isAdmin;
@@ -207,6 +216,7 @@ export function ApplicationDetailPage({
 
   const canSendSignature =
     isAdmin &&
+    !isReadOnly &&
     application.contract?.id &&
     application.contract?.status === "GENERATED" &&
     ["NOT_SENT"].includes(signatureStatus);
@@ -230,7 +240,13 @@ export function ApplicationDetailPage({
           </Link>
         </Button>
         <PageHeader
-          eyebrow={isAdmin ? "Detalhe administrativo" : "Detalhe da consulta"}
+          eyebrow={
+            isReadOnly
+              ? "Visualização"
+              : isAdmin
+                ? "Detalhe administrativo"
+                : "Detalhe da consulta"
+          }
           title={formatDocument(application.document, application.documentType)}
           description={flowStatus.description}
           action={
@@ -306,13 +322,15 @@ export function ApplicationDetailPage({
                   Enviar para assinatura
                 </Button>
               ) : null}
-              <DeleteApplicationDialog
-                application={application}
-                isDeleting={deleteMutation.isPending}
-                onConfirm={(application) =>
-                  deleteMutation.mutate(application.id)
-                }
-              />
+              {!isReadOnly ? (
+                <DeleteApplicationDialog
+                  application={application}
+                  isDeleting={deleteMutation.isPending}
+                  onConfirm={(application) =>
+                    deleteMutation.mutate(application.id)
+                  }
+                />
+              ) : null}
             </div>
           }
         />
@@ -492,7 +510,7 @@ export function ApplicationDetailPage({
         {application.contract ? (
           <ContractSignaturePanel
             contract={application.contract}
-            isAdmin={isAdmin}
+            isAdmin={isAdmin && !isReadOnly}
           />
         ) : null}
 

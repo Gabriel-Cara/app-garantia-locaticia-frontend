@@ -36,6 +36,8 @@ interface IApplicationMobileCard {
   application: RentalApplication;
   basePath: string;
   isAdmin: boolean;
+  isReadOnly?: boolean;
+  showRequester?: boolean;
   tableMode?: ApplicationsTableMode;
   onDownloadContract?: (application: RentalApplication) => void;
   onDeleteApplication?: (application: RentalApplication) => void;
@@ -46,6 +48,8 @@ interface IApplicationsTable {
   applications: RentalApplication[];
   basePath: string;
   isAdmin?: boolean;
+  isReadOnly?: boolean;
+  showRequester?: boolean;
   tableMode?: ApplicationsTableMode;
   onDownloadContract?: (application: RentalApplication) => void;
   onDeleteApplication?: (application: RentalApplication) => void;
@@ -223,7 +227,7 @@ function FlowStatusWithSignatureProgress({
 function ApplicationMobileCard({
   application,
   basePath,
-  isAdmin,
+  showRequester,
   tableMode = "default",
   onDownloadContract,
   onDeleteApplication,
@@ -257,7 +261,7 @@ function ApplicationMobileCard({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {isAdmin ? (
+        {showRequester ? (
           <MobileInfo
             label="Imobiliária"
             value={
@@ -332,6 +336,8 @@ export function ApplicationsTable({
   applications,
   basePath,
   isAdmin = false,
+  isReadOnly = false,
+  showRequester = isAdmin,
   tableMode = "default",
   onDownloadContract,
   onDeleteApplication,
@@ -570,7 +576,7 @@ export function ApplicationsTable({
       },
     ];
 
-    if (!isAdmin) return baseColumns;
+    if (!showRequester) return baseColumns;
 
     baseColumns.splice(1, 0, {
       id: "requester",
@@ -623,6 +629,8 @@ export function ApplicationsTable({
             application={application}
             basePath={basePath}
             isAdmin={isAdmin}
+            isReadOnly={isReadOnly}
+            showRequester={showRequester}
             tableMode={tableMode}
             onDownloadContract={onDownloadContract}
             onDeleteApplication={onDeleteApplication}
@@ -635,7 +643,7 @@ export function ApplicationsTable({
         <Table
           className={cn(
             "min-w-190",
-            isAdmin && "min-w-245",
+            showRequester && "min-w-245",
             tableMode === "contracts" && "min-w-230",
           )}
         >

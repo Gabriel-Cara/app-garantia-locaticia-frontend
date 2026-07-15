@@ -1,4 +1,10 @@
-export type UserRole = "ADMIN" | "REAL_ESTATE" | "admin" | "real_estate";
+export type UserRole =
+  | "ADMIN"
+  | "REAL_ESTATE"
+  | "ACCOUNT_EXECUTIVE"
+  | "admin"
+  | "real_estate"
+  | "account_executive";
 
 export type RealEstateProfile = {
   id: string;
@@ -32,10 +38,17 @@ export type AuthSession = {
   user: AuthUser;
 };
 
+export type NormalizedUserRole = "ADMIN" | "REAL_ESTATE" | "ACCOUNT_EXECUTIVE";
+
 export function normalizeRole(role?: UserRole | string | null) {
-  return String(role ?? "").toUpperCase() as "ADMIN" | "REAL_ESTATE";
+  return String(role ?? "").toUpperCase() as NormalizedUserRole;
 }
 
 export function getRoleBasePath(role?: UserRole | string | null) {
-  return normalizeRole(role) === "ADMIN" ? "/admin" : "/real_estate";
+  const normalizedRole = normalizeRole(role);
+
+  if (normalizedRole === "ADMIN") return "/admin";
+  if (normalizedRole === "ACCOUNT_EXECUTIVE") return "/account-executive";
+
+  return "/real_estate";
 }

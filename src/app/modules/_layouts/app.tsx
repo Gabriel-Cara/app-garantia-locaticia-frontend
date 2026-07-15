@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export function AppLayout({
   expectedRole,
 }: {
-  expectedRole?: "ADMIN" | "REAL_ESTATE";
+  expectedRole?: "ADMIN" | "REAL_ESTATE" | "ACCOUNT_EXECUTIVE";
 }) {
   const { session, isLoading, remove } = useAuth();
   const navigate = useNavigate();
@@ -68,6 +68,8 @@ export function AppLayout({
                 <p className="truncate text-sm font-medium">
                   {currentRole === "ADMIN"
                     ? "Administração"
+                    : currentRole === "ACCOUNT_EXECUTIVE"
+                    ? "Executivo de contas"
                     : "Portal imobiliária"}
                 </p>
               </div>

@@ -66,6 +66,19 @@ const realEstateItems: NavItem[] = [
   },
 ];
 
+const accountExecutiveItems: NavItem[] = [
+  {
+    title: "Consultas",
+    href: "/account-executive/consultas",
+    icon: ClipboardList,
+  },
+  {
+    title: "Contratos",
+    href: "/account-executive/contratos",
+    icon: FileClock,
+  },
+];
+
 function isActivePath(pathname: string, href: string) {
   if (href.endsWith("dashboard")) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -77,7 +90,16 @@ export function AppSidebar() {
   const location = useLocation();
   const role = normalizeRole(session?.user.role);
   const basePath = getRoleBasePath(role);
-  const items = role === "ADMIN" ? adminItems : realEstateItems;
+  const items =
+    role === "ADMIN"
+      ? adminItems
+      : role === "ACCOUNT_EXECUTIVE"
+        ? accountExecutiveItems
+        : realEstateItems;
+  const homeHref =
+    role === "ACCOUNT_EXECUTIVE"
+      ? "/account-executive/consultas"
+      : `${basePath}/dashboard`;
   const displayName =
     session?.user.realEstateProfile?.name ?? session?.user.name ?? "Doculoc";
 
@@ -89,7 +111,7 @@ export function AppSidebar() {
     <Sidebar variant="floating" className="border-none">
       <SidebarHeader>
         <Link
-          to={`${basePath}/dashboard`}
+          to={homeHref}
           onClick={closeMobileNav}
           className="flex min-w-0 flex-col gap-2 p-4"
         >
