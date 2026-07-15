@@ -8,9 +8,13 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { getRoleBasePath, normalizeRole } from "@/types/auth";
+import { getRoleHomePath, normalizeRole } from "@/types/auth";
 import { AppSidebar } from "../admin/components/app-sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function AppLayout({
   expectedRole,
@@ -41,9 +45,7 @@ export function AppLayout({
   const currentRole = normalizeRole(session.user.role);
 
   if (expectedRole && currentRole !== expectedRole) {
-    return (
-      <Navigate to={`${getRoleBasePath(currentRole)}/dashboard`} replace />
-    );
+    return <Navigate to={getRoleHomePath(currentRole)} replace />;
   }
 
   function handleSignOut() {
@@ -69,8 +71,8 @@ export function AppLayout({
                   {currentRole === "ADMIN"
                     ? "Administração"
                     : currentRole === "ACCOUNT_EXECUTIVE"
-                    ? "Executivo de contas"
-                    : "Portal imobiliária"}
+                      ? "Executivo de contas"
+                      : "Portal imobiliária"}
                 </p>
               </div>
             </div>

@@ -52,3 +52,17 @@ export function getRoleBasePath(role?: UserRole | string | null) {
 
   return "/real_estate";
 }
+
+export function getRoleHomePath(role?: UserRole | string | null) {
+  const normalizedRole = normalizeRole(role);
+
+  if (normalizedRole === "ADMIN") {
+    return "/admin/dashboard";
+  }
+
+  if (normalizedRole === "ACCOUNT_EXECUTIVE") {
+    return "/account-executive/consultas";
+  }
+
+  return "/real_estate/dashboard";
+}

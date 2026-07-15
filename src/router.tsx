@@ -141,6 +141,10 @@ export const router = createBrowserRouter([
         element: <Navigate to="/account-executive/consultas" replace />,
       },
       {
+        path: "dashboard",
+        element: <Navigate to="/account-executive/consultas" replace />,
+      },
+      {
         path: "consultas",
         element: (
           <ApplicationsPage
@@ -173,6 +177,10 @@ export const router = createBrowserRouter([
   {
     path: "/real-estate/*",
     element: <Navigate to="/real_estate/dashboard" replace />,
+  },
+  {
+    path: "/account_executive/*",
+    element: <Navigate to="/account-executive/consultas" replace />,
   },
   {
     path: "*",

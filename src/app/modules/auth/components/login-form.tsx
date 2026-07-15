@@ -16,6 +16,7 @@ import {
 
 // Libs
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { getRoleHomePath } from "@/types/auth";
 import { Loader2, Mail } from "lucide-react";
 import { signIn } from "@/api/sign-in";
 import { cn } from "@/lib/utils";
@@ -78,9 +79,9 @@ export function LoginForm({
 
       save(response.data);
 
-      const role = response.data.user.role.toLowerCase();
-
-      navigate(`/${role}/dashboard`);
+      navigate(getRoleHomePath(response.data.user.role), {
+        replace: true,
+      });
     } catch (error) {
       toast.error("Email ou senha incorretos.");
     }
