@@ -88,6 +88,26 @@ function LeadStatusBadge({ realEstate }: { realEstate: RealEstateWithCount }) {
   );
 }
 
+function getProfileTypeLabel(
+  profile?: RealEstateWithCount["realEstateProfile"],
+) {
+  return profile?.profileType === "AUTONOMOUS_BROKER"
+    ? "Corretor autônomo"
+    : "Imobiliária";
+}
+
+function getProfileDocumentLabel(
+  profile?: RealEstateWithCount["realEstateProfile"],
+) {
+  return profile?.documentType === "CPF" ? "CPF" : "CNPJ";
+}
+
+function getProfileDocument(
+  profile?: RealEstateWithCount["realEstateProfile"],
+) {
+  return profile?.document ?? profile?.cnpj ?? undefined;
+}
+
 function RealEstateInfoCard({
   realEstate,
 }: {
@@ -126,10 +146,13 @@ function RealEstateInfoCard({
         </div>
         <div className="rounded-2xl border bg-stone-50/80 p-3">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            CNPJ
+            {getProfileDocumentLabel(profile)}
           </p>
           <p className="mt-1 wrap-break-word text-sm font-medium text-foreground">
-            {formatDocument(profile?.cnpj ?? undefined, "CNPJ")}
+            {formatDocument(
+              getProfileDocument(profile),
+              profile?.documentType ?? "CNPJ",
+            )}
           </p>
         </div>
         <div className="rounded-2xl border bg-stone-50/80 p-3">
@@ -172,6 +195,9 @@ export function RealEstatesPage() {
         profile?.name,
         profile?.responsibleName,
         profile?.cnpj,
+        profile?.document,
+        profile?.documentType,
+        profile?.profileType,
         profile?.phone,
       ]
         .filter(Boolean)
@@ -220,7 +246,7 @@ export function RealEstatesPage() {
                 <TableRow>
                   <TableHead>Imobiliária</TableHead>
                   <TableHead>Responsável</TableHead>
-                  <TableHead>CNPJ</TableHead>
+                  <TableHead>Documento</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Consultas</TableHead>
                   <TableHead>Carteira</TableHead>
@@ -251,7 +277,18 @@ export function RealEstatesPage() {
                         {profile?.responsibleName ?? realEstate.name}
                       </TableCell>
                       <TableCell>
-                        {formatDocument(profile?.cnpj ?? undefined, "CNPJ")}
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground">
+                            {getProfileTypeLabel(profile)} ·{" "}
+                            {getProfileDocumentLabel(profile)}
+                          </div>
+                          <div>
+                            {formatDocument(
+                              getProfileDocument(profile),
+                              profile?.documentType ?? "CNPJ",
+                            )}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <LeadStatusBadge realEstate={realEstate} />

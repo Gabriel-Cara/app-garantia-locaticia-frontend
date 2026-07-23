@@ -6,10 +6,18 @@ export type UserRole =
   | "real_estate"
   | "account_executive";
 
+export type RealEstateProfileType = "COMPANY" | "AUTONOMOUS_BROKER";
+
 export type RealEstateProfile = {
   id: string;
+  profileType?: RealEstateProfileType | null;
+
   name: string;
-  cnpj?: string | null;
+
+  cnpj?: string | null; // legado
+  documentType?: "CPF" | "CNPJ" | null;
+  document?: string | null;
+
   phone?: string | null;
   responsibleName?: string | null;
 

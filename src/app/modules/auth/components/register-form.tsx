@@ -16,9 +16,17 @@ import {
   FieldLabel,
   FieldSeparator,
 } from "@/components/ui/field";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Icons
-import { Building2, FileText, Loader2, Mail, SquareUser } from "lucide-react";
+import {
+  Building2,
+  FileText,
+  Loader2,
+  Mail,
+  SquareUser,
+  UserRound,
+} from "lucide-react";
 
 // API
 import { signUp } from "@/api/sign-up";
@@ -48,30 +56,45 @@ const signUpForm = z.object({
 
   role: z.enum(["REAL_ESTATE", "ADMIN"]),
 
-  realEstateProfile: z.object({
-    name: z.string().min(3, "Informe o nome da imobiliária."),
+  realEstateProfile: z
+    .object({
+      profileType: z.enum(["COMPANY", "AUTONOMOUS_BROKER"]),
 
-    cnpj: z
-      .string()
-      .optional()
-      .refine((value) => {
-        const digits = value?.replace(/\D/g, "") ?? "";
+      name: z.string().min(3, "Informe o nome."),
 
-        return digits.length === 0 || digits.length === 14;
-      }, "Informe um CNPJ válido ou deixe o campo vazio."),
+      document: z.string().min(1, "Informe o documento."),
 
-    phone: z.string().min(8, "Informe um telefone válido."),
+      phone: z.string().min(8, "Informe um telefone válido."),
 
-    responsibleName: z.string().min(3, "Informe o nome do responsável."),
+      responsibleName: z.string().min(3, "Informe o nome do responsável."),
 
-    zipCode: z.string().optional(),
-    street: z.string().optional(),
-    number: z.string().optional(),
-    complement: z.string().optional(),
-    neighborhood: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-  }),
+      zipCode: z.string().optional(),
+      street: z.string().optional(),
+      number: z.string().optional(),
+      complement: z.string().optional(),
+      neighborhood: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+    })
+    .superRefine((data, context) => {
+      const digits = data.document.replace(/\D/g, "");
+
+      if (data.profileType === "COMPANY" && digits.length !== 14) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["document"],
+          message: "Informe um CNPJ válido.",
+        });
+      }
+
+      if (data.profileType === "AUTONOMOUS_BROKER" && digits.length !== 11) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["document"],
+          message: "Informe um CPF válido.",
+        });
+      }
+    }),
 });
 
 type SignUpForm = z.infer<typeof signUpForm>;
@@ -90,6 +113,7 @@ export function RegisterForm({
     setValue,
     setFocus,
     setError,
+    clearErrors,
     watch,
     formState: { isSubmitting, errors },
   } = useForm<SignUpForm>({
@@ -99,8 +123,9 @@ export function RegisterForm({
       password: "",
       role: "REAL_ESTATE",
       realEstateProfile: {
+        profileType: "COMPANY",
         name: "",
-        cnpj: "",
+        document: "",
         phone: "",
         responsibleName: "",
         zipCode: "",
@@ -115,8 +140,17 @@ export function RegisterForm({
   });
 
   const realEstateZipCode = watch("realEstateProfile.zipCode") ?? "";
-  const realEstateCnpj = watch("realEstateProfile.cnpj") ?? "";
+  const profileType = watch("realEstateProfile.profileType") ?? "COMPANY";
+  const realEstateDocument = watch("realEstateProfile.document") ?? "";
   const realEstatePhone = watch("realEstateProfile.phone") ?? "";
+
+  const isCompany = profileType === "COMPANY";
+  const documentType = isCompany ? "CNPJ" : "CPF";
+  const documentLabel = isCompany ? "CNPJ" : "CPF";
+  const documentPlaceholder = isCompany
+    ? "00.000.000/0000-00"
+    : "000.000.000-00";
+  const documentMaxLength = isCompany ? 18 : 14;
 
   useEffect(() => {
     const cleanZipCode = realEstateZipCode?.replace(/\D/g, "");
@@ -161,7 +195,11 @@ export function RegisterForm({
         ...data,
         realEstateProfile: {
           ...data.realEstateProfile,
-          cnpj: data.realEstateProfile.cnpj ?? "",
+          document: data.realEstateProfile.document,
+          cnpj:
+            data.realEstateProfile.profileType === "COMPANY"
+              ? data.realEstateProfile.document
+              : undefined,
         },
       };
 
@@ -187,13 +225,15 @@ export function RegisterForm({
         return;
       }
 
-      if (code === "CNPJ_ALREADY_USED") {
-        setError("realEstateProfile.cnpj", {
+      if (code === "DOCUMENT_ALREADY_USED" || code === "CNPJ_ALREADY_USED") {
+        const documentName = documentType === "CPF" ? "CPF" : "CNPJ";
+
+        setError("realEstateProfile.document", {
           type: "server",
-          message: "Este CNPJ já está cadastrado.",
+          message: `Este ${documentName} já está cadastrado.`,
         });
 
-        toast.error("Este CNPJ já está cadastrado.");
+        toast.error(`Este ${documentName} já está cadastrado.`);
         return;
       }
 
@@ -201,10 +241,31 @@ export function RegisterForm({
     }
   }
 
-  function handleCnpjChange(value: string) {
-    setValue("realEstateProfile.cnpj", formatDocumentInput(value, "CNPJ"), {
+  function handleProfileTypeChange(value: string) {
+    const nextProfileType = value as "COMPANY" | "AUTONOMOUS_BROKER";
+
+    setValue("realEstateProfile.profileType", nextProfileType, {
       shouldDirty: true,
+      shouldValidate: true,
     });
+
+    setValue("realEstateProfile.document", "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    clearErrors("realEstateProfile.document");
+  }
+
+  function handleDocumentChange(value: string) {
+    setValue(
+      "realEstateProfile.document",
+      formatDocumentInput(value, documentType),
+      {
+        shouldDirty: true,
+        shouldValidate: true,
+      },
+    );
   }
 
   function handlePhoneChange(value: string) {
@@ -234,9 +295,26 @@ export function RegisterForm({
             Preencha os campos para fazer seu cadastro
           </p>
         </div>
+        <Tabs
+          value={profileType}
+          onValueChange={handleProfileTypeChange}
+          className="w-full"
+        >
+          <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl">
+            <TabsTrigger value="COMPANY" className="rounded-xl py-2">
+              <Building2 className="size-4" />
+              Imobiliária PJ
+            </TabsTrigger>
+
+            <TabsTrigger value="AUTONOMOUS_BROKER" className="rounded-xl py-2">
+              <UserRound className="size-4" />
+              Corretor autônomo
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         <Field>
           <FieldLabel htmlFor="real-estate-name">
-            Nome da imobiliária
+            {isCompany ? "Nome da imobiliária" : "Nome profissional/comercial"}
           </FieldLabel>
           <InputGroup>
             <InputGroupAddon>
@@ -245,7 +323,9 @@ export function RegisterForm({
             <InputGroupInput
               id="real-estate-name"
               type="text"
-              placeholder="Imobiliária Demo"
+              placeholder={
+                isCompany ? "Imobiliária Demo" : "João Silva Corretor"
+              }
               required
               {...register("realEstateProfile.name")}
             />
@@ -257,34 +337,36 @@ export function RegisterForm({
           </FieldDescription>
         )}
         <Field>
-          <div className="flex justify-between">
-            <FieldLabel htmlFor="real-estate-cnpj">CNPJ</FieldLabel>
-            <FieldDescription>&#40;Opcional&#41;</FieldDescription>
-          </div>
+          <FieldLabel htmlFor="real-estate-document">
+            {documentLabel}
+          </FieldLabel>
+
           <InputGroup>
             <InputGroupAddon>
               <FileText />
             </InputGroupAddon>
             <InputGroupInput
-              id="real-estate-cnpj"
+              id="real-estate-document"
               type="text"
               inputMode="numeric"
-              maxLength={18}
-              placeholder="00.000.000/0000-00"
-              {...register("realEstateProfile.cnpj")}
-              value={realEstateCnpj}
-              onChange={(event) => handleCnpjChange(event.target.value)}
+              maxLength={documentMaxLength}
+              placeholder={documentPlaceholder}
+              required
+              {...register("realEstateProfile.document")}
+              value={realEstateDocument}
+              onChange={(event) => handleDocumentChange(event.target.value)}
             />
           </InputGroup>
         </Field>
-        {errors.realEstateProfile?.cnpj ? (
+
+        {errors.realEstateProfile?.document ? (
           <FieldDescription className="text-rose-500">
-            {errors.realEstateProfile.cnpj.message}
+            {errors.realEstateProfile.document.message}
           </FieldDescription>
         ) : null}
         <Field>
           <FieldLabel htmlFor="responsible-name">
-            Nome do responsável
+            {isCompany ? "Nome do responsável" : "Nome completo"}
           </FieldLabel>
           <InputGroup>
             <InputGroupAddon>
@@ -293,7 +375,9 @@ export function RegisterForm({
             <InputGroupInput
               id="responsible-name"
               type="text"
-              placeholder="João da Silva"
+              placeholder={
+                isCompany ? "João da Silva" : "Nome completo do corretor"
+              }
               required
               {...register("realEstateProfile.responsibleName")}
             />
@@ -330,7 +414,7 @@ export function RegisterForm({
         )}
         <Field>
           <FieldLabel htmlFor="real-estate-zipcode">
-            CEP da imobiliária
+            {isCompany ? "CEP da imobiliária" : "CEP de atendimento"}
           </FieldLabel>
           <InputGroup>
             <InputGroupAddon>
