@@ -1,8 +1,19 @@
+// React
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet-async";
-import { Building2, Crown, Search, WalletCards } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 
+// Libs
+import { Building2, Crown, Search, Sparkles, WalletCards } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { formatDocument } from "@/lib/format";
+import { Helmet } from "react-helmet-async";
+
+// Components
+import {
+  EmptyState,
+  PageHeader,
+  PageShell,
+} from "@/app/modules/_components/page-shell";
+import { CreditEditDialog } from "../components/credit-edit-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,14 +24,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { EmptyState, PageHeader, PageShell } from "@/app/modules/_components/page-shell";
-import { formatDocument } from "@/lib/format";
-import { getWallet } from "@/services/credits";
-import { listRentalApplications } from "@/services/rental-applications";
-import type { ApplicationRequester } from "@/types/doculoc";
-import { CreditEditDialog } from "../components/credit-edit-dialog";
 
-type RealEstateWithCount = ApplicationRequester & { applicationsCount: number };
+// Services
+import { getWallet } from "@/services/credits";
+import {
+  listRealEstates,
+  type RealEstateListItem,
+} from "@/services/real-estates";
+
+type RealEstateWithCount = RealEstateListItem;
 
 function WalletStatus({ userId }: { userId: string }) {
   const { data: wallet, isLoading } = useQuery({
@@ -28,9 +40,11 @@ function WalletStatus({ userId }: { userId: string }) {
     queryFn: () => getWallet(userId),
   });
 
-  if (isLoading) return <span className="text-sm text-muted-foreground">Carregando...</span>;
+  if (isLoading)
+    return <span className="text-sm text-muted-foreground">Carregando...</span>;
 
-  if (!wallet) return <span className="text-sm text-muted-foreground">Sem carteira</span>;
+  if (!wallet)
+    return <span className="text-sm text-muted-foreground">Sem carteira</span>;
 
   if (wallet.isVip) {
     return (
@@ -42,13 +56,43 @@ function WalletStatus({ userId }: { userId: string }) {
   }
 
   return (
-    <Badge variant="outline" className="h-7 rounded-full border-stone-200 bg-stone-50 px-3">
+    <Badge
+      variant="outline"
+      className="h-7 rounded-full border-stone-200 bg-stone-50 px-3"
+    >
       {wallet.availableCredits} créditos
     </Badge>
   );
 }
 
-function RealEstateInfoCard({ realEstate }: { realEstate: RealEstateWithCount }) {
+function LeadStatusBadge({ realEstate }: { realEstate: RealEstateWithCount }) {
+  if (realEstate.applicationsCount === 0) {
+    return (
+      <Badge
+        variant="outline"
+        className="h-7 rounded-full border-amber-200 bg-amber-50 px-3 text-amber-700"
+      >
+        <Sparkles className="size-3" />
+        Novo lead
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      className="h-7 rounded-full border-emerald-200 bg-emerald-50 px-3 text-emerald-700"
+    >
+      Ativa
+    </Badge>
+  );
+}
+
+function RealEstateInfoCard({
+  realEstate,
+}: {
+  realEstate: RealEstateWithCount;
+}) {
   const profile = realEstate.realEstateProfile;
   const name = profile?.name ?? realEstate.name;
 
@@ -59,8 +103,15 @@ function RealEstateInfoCard({ realEstate }: { realEstate: RealEstateWithCount })
           <Building2 className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold text-foreground">{name}</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{realEstate.email}</p>
+          <p className="truncate text-base font-semibold text-foreground">
+            {name}
+          </p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {realEstate.email}
+          </p>
+          <div className="mt-2">
+            <LeadStatusBadge realEstate={realEstate} />
+          </div>
         </div>
       </div>
 
@@ -85,7 +136,9 @@ function RealEstateInfoCard({ realEstate }: { realEstate: RealEstateWithCount })
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Consultas
           </p>
-          <p className="mt-1 text-sm font-medium text-foreground">{realEstate.applicationsCount}</p>
+          <p className="mt-1 text-sm font-medium text-foreground">
+            {realEstate.applicationsCount}
+          </p>
         </div>
         <div className="rounded-2xl border bg-stone-50/80 p-3">
           <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -105,28 +158,29 @@ function RealEstateInfoCard({ realEstate }: { realEstate: RealEstateWithCount })
 export function RealEstatesPage() {
   const [search, setSearch] = useState("");
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-real-estates-source"],
-    queryFn: () => listRentalApplications({ page: 1, perPage: 100 }),
+    queryKey: ["admin-real-estates"],
+    queryFn: () => listRealEstates(),
   });
 
   const realEstates = useMemo(() => {
-    const map = new Map<string, RealEstateWithCount>();
+    return (data ?? []).filter((realEstate) => {
+      const profile = realEstate.realEstateProfile;
 
-    for (const application of data?.applications ?? []) {
-      if (!application.requester?.id) continue;
+      const normalized = [
+        realEstate.name,
+        realEstate.email,
+        profile?.name,
+        profile?.responsibleName,
+        profile?.cnpj,
+        profile?.phone,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-      const current = map.get(application.requester.id);
-      map.set(application.requester.id, {
-        ...application.requester,
-        applicationsCount: (current?.applicationsCount ?? 0) + 1,
-      });
-    }
-
-    return Array.from(map.values()).filter((requester) => {
-      const normalized = `${requester.name} ${requester.email} ${requester.realEstateProfile?.name ?? ""}`.toLowerCase();
       return normalized.includes(search.toLowerCase());
     });
-  }, [data?.applications, search]);
+  }, [data, search]);
 
   return (
     <PageShell>
@@ -135,7 +189,7 @@ export function RealEstatesPage() {
       <PageHeader
         eyebrow="Créditos e VIP"
         title="Imobiliárias"
-        description="Gerencie créditos e status VIP das imobiliárias que já aparecem nas consultas retornadas pelo backend."
+        description="Gerencie créditos, status VIP e acompanhe novas imobiliárias cadastradas, mesmo antes da primeira consulta."
       />
 
       <div className="rounded-3xl border bg-white/80 p-4 shadow-sm backdrop-blur">
@@ -167,6 +221,7 @@ export function RealEstatesPage() {
                   <TableHead>Imobiliária</TableHead>
                   <TableHead>Responsável</TableHead>
                   <TableHead>CNPJ</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Consultas</TableHead>
                   <TableHead>Carteira</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -186,18 +241,30 @@ export function RealEstatesPage() {
                           </div>
                           <div className="min-w-0 max-w-64">
                             <div className="truncate font-medium">{name}</div>
-                            <div className="truncate text-xs text-muted-foreground">{realEstate.email}</div>
+                            <div className="truncate text-xs text-muted-foreground">
+                              {realEstate.email}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{profile?.responsibleName ?? realEstate.name}</TableCell>
-                      <TableCell>{formatDocument(profile?.cnpj ?? undefined, "CNPJ")}</TableCell>
+                      <TableCell>
+                        {profile?.responsibleName ?? realEstate.name}
+                      </TableCell>
+                      <TableCell>
+                        {formatDocument(profile?.cnpj ?? undefined, "CNPJ")}
+                      </TableCell>
+                      <TableCell>
+                        <LeadStatusBadge realEstate={realEstate} />
+                      </TableCell>
                       <TableCell>{realEstate.applicationsCount}</TableCell>
                       <TableCell>
                         <WalletStatus userId={realEstate.id} />
                       </TableCell>
                       <TableCell className="text-right">
-                        <CreditEditDialog userId={realEstate.id} realEstateName={name} />
+                        <CreditEditDialog
+                          userId={realEstate.id}
+                          realEstateName={name}
+                        />
                       </TableCell>
                     </TableRow>
                   );
@@ -210,7 +277,7 @@ export function RealEstatesPage() {
         <EmptyState
           icon={<WalletCards className="size-7" />}
           title="Nenhuma imobiliária encontrada"
-          description="A documentação fornecida não expõe uma rota universal de listagem de usuários. Por isso, esta tela usa as imobiliárias presentes nas consultas retornadas pela API."
+          description="Quando uma imobiliária se cadastrar, ela aparecerá aqui automaticamente, mesmo antes de realizar a primeira consulta."
         />
       )}
     </PageShell>
