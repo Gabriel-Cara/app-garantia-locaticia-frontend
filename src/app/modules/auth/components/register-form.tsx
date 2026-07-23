@@ -24,6 +24,8 @@ import {
   FileText,
   Loader2,
   Mail,
+  MapPin,
+  Phone,
   SquareUser,
   UserRound,
 } from "lucide-react";
@@ -246,12 +248,12 @@ export function RegisterForm({
 
     setValue("realEstateProfile.profileType", nextProfileType, {
       shouldDirty: true,
-      shouldValidate: true,
+      shouldValidate: false,
     });
 
     setValue("realEstateProfile.document", "", {
       shouldDirty: true,
-      shouldValidate: true,
+      shouldValidate: false,
     });
 
     clearErrors("realEstateProfile.document");
@@ -295,275 +297,294 @@ export function RegisterForm({
             Preencha os campos para fazer seu cadastro
           </p>
         </div>
-        <Tabs
-          value={profileType}
-          onValueChange={handleProfileTypeChange}
-          className="w-full"
-        >
-          <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl">
-            <TabsTrigger value="COMPANY" className="rounded-xl py-2">
-              <Building2 className="size-4" />
-              Imobiliária PJ
-            </TabsTrigger>
+        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-background ">
+          <Tabs
+            value={profileType}
+            onValueChange={handleProfileTypeChange}
+            className="w-full"
+          >
+            <TabsList className="w-full">
+              {/* className="rounded-xl p-2" */}
+              <TabsTrigger value="COMPANY">
+                <Building2 className="size-4" />
+                Imobiliária PJ
+              </TabsTrigger>
 
-            <TabsTrigger value="AUTONOMOUS_BROKER" className="rounded-xl py-2">
-              <UserRound className="size-4" />
-              Corretor autônomo
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Field>
-          <FieldLabel htmlFor="real-estate-name">
-            {isCompany ? "Nome da imobiliária" : "Nome profissional/comercial"}
-          </FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Building2 />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-name"
-              type="text"
-              placeholder={
-                isCompany ? "Imobiliária Demo" : "João Silva Corretor"
-              }
-              required
-              {...register("realEstateProfile.name")}
-            />
-          </InputGroup>
-        </Field>
-        {errors.realEstateProfile?.name && (
-          <FieldDescription className="text-rose-500">
-            {errors.realEstateProfile.name.message}
-          </FieldDescription>
-        )}
-        <Field>
-          <FieldLabel htmlFor="real-estate-document">
-            {documentLabel}
-          </FieldLabel>
+              {/* className="rounded-xl p-2" */}
+              <TabsTrigger value="AUTONOMOUS_BROKER">
+                <UserRound className="size-4" />
+                Corretor autônomo
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-          <InputGroup>
-            <InputGroupAddon>
-              <FileText />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-document"
-              type="text"
-              inputMode="numeric"
-              maxLength={documentMaxLength}
-              placeholder={documentPlaceholder}
-              required
-              {...register("realEstateProfile.document")}
-              value={realEstateDocument}
-              onChange={(event) => handleDocumentChange(event.target.value)}
-            />
-          </InputGroup>
-        </Field>
+          <div className="flex flex-col gap-4 px-2 pb-3">
+            <Field>
+              <FieldLabel htmlFor="real-estate-name">
+                {isCompany
+                  ? "Nome da imobiliária"
+                  : "Nome profissional/comercial"}
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Building2 />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-name"
+                  type="text"
+                  placeholder={
+                    isCompany ? "Imobiliária Demo" : "João Silva Corretor"
+                  }
+                  required
+                  {...register("realEstateProfile.name")}
+                />
+              </InputGroup>
+            </Field>
+            {errors.realEstateProfile?.name && (
+              <FieldDescription className="text-rose-500">
+                {errors.realEstateProfile.name.message}
+              </FieldDescription>
+            )}
 
-        {errors.realEstateProfile?.document ? (
-          <FieldDescription className="text-rose-500">
-            {errors.realEstateProfile.document.message}
-          </FieldDescription>
-        ) : null}
-        <Field>
-          <FieldLabel htmlFor="responsible-name">
-            {isCompany ? "Nome do responsável" : "Nome completo"}
-          </FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <SquareUser />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="responsible-name"
-              type="text"
-              placeholder={
-                isCompany ? "João da Silva" : "Nome completo do corretor"
-              }
-              required
-              {...register("realEstateProfile.responsibleName")}
-            />
-          </InputGroup>
-        </Field>
-        {errors.realEstateProfile?.responsibleName && (
-          <FieldDescription className="text-rose-500">
-            {errors.realEstateProfile.responsibleName.message}
-          </FieldDescription>
-        )}
-        <Field>
-          <FieldLabel htmlFor="phone">Telefone</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <SquareUser />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="phone"
-              type="text"
-              inputMode="numeric"
-              maxLength={15}
-              placeholder="(00) 00000-0000"
-              required
-              {...register("realEstateProfile.phone")}
-              value={realEstatePhone}
-              onChange={(event) => handlePhoneChange(event.target.value)}
-            />
-          </InputGroup>
-        </Field>
-        {errors.realEstateProfile?.phone && (
-          <FieldDescription className="text-rose-500">
-            {errors.realEstateProfile.phone.message}
-          </FieldDescription>
-        )}
-        <Field>
-          <FieldLabel htmlFor="real-estate-zipcode">
-            {isCompany ? "CEP da imobiliária" : "CEP de atendimento"}
-          </FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Building2 />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-zipcode"
-              type="text"
-              inputMode="numeric"
-              maxLength={9}
-              placeholder="00000-000"
-              {...register("realEstateProfile.zipCode")}
-              value={realEstateZipCode}
-              onChange={(event) => handleZipCodeChange(event.target.value)}
-            />
-          </InputGroup>
-        </Field>
-        {isFetchingCep ? (
-          <p className="text-xs text-muted-foreground">Buscando endereço...</p>
-        ) : null}
+            <Field>
+              <FieldLabel htmlFor="real-estate-document">
+                {documentLabel}
+              </FieldLabel>
 
-        <Field>
-          <FieldLabel htmlFor="real-estate-street">
-            Endereço da imobiliária
-          </FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Building2 />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-street"
-              type="text"
-              placeholder="Avenida Paulista"
-              {...register("realEstateProfile.street")}
-            />
-          </InputGroup>
-        </Field>
+              <InputGroup>
+                <InputGroupAddon>
+                  <FileText />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-document"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={documentMaxLength}
+                  placeholder={documentPlaceholder}
+                  required
+                  {...register("realEstateProfile.document")}
+                  value={realEstateDocument}
+                  onChange={(event) => handleDocumentChange(event.target.value)}
+                />
+              </InputGroup>
+            </Field>
+            {errors.realEstateProfile?.document ? (
+              <FieldDescription className="text-rose-500">
+                {errors.realEstateProfile.document.message}
+              </FieldDescription>
+            ) : null}
 
-        <Field>
-          <FieldLabel htmlFor="real-estate-number">Número</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Building2 />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-number"
-              type="text"
-              placeholder="1471"
-              {...register("realEstateProfile.number")}
-            />
-          </InputGroup>
-        </Field>
+            <Field>
+              <FieldLabel htmlFor="responsible-name">
+                {isCompany ? "Nome do responsável" : "Nome completo"}
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <SquareUser />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="responsible-name"
+                  type="text"
+                  placeholder={
+                    isCompany ? "João da Silva" : "Nome completo do corretor"
+                  }
+                  required
+                  {...register("realEstateProfile.responsibleName")}
+                />
+              </InputGroup>
+            </Field>
+            {errors.realEstateProfile?.responsibleName && (
+              <FieldDescription className="text-rose-500">
+                {errors.realEstateProfile.responsibleName.message}
+              </FieldDescription>
+            )}
 
-        <Field>
-          <FieldLabel htmlFor="real-estate-complement">Complemento</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Building2 />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-complement"
-              type="text"
-              placeholder="Conjunto 511"
-              {...register("realEstateProfile.complement")}
-            />
-          </InputGroup>
-        </Field>
+            <Field>
+              <FieldLabel htmlFor="phone">Telefone</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <SquareUser />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="phone"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={15}
+                  placeholder="(00) 00000-0000"
+                  required
+                  {...register("realEstateProfile.phone")}
+                  value={realEstatePhone}
+                  onChange={(event) => handlePhoneChange(event.target.value)}
+                />
+              </InputGroup>
+            </Field>
+            {errors.realEstateProfile?.phone && (
+              <FieldDescription className="text-rose-500">
+                {errors.realEstateProfile.phone.message}
+              </FieldDescription>
+            )}
 
-        <Field>
-          <FieldLabel htmlFor="real-estate-neighborhood">Bairro</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Building2 />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-neighborhood"
-              type="text"
-              placeholder="Bela Vista"
-              {...register("realEstateProfile.neighborhood")}
-            />
-          </InputGroup>
-        </Field>
+            <Field>
+              <FieldLabel htmlFor="real-estate-zipcode">
+                {isCompany ? "CEP da imobiliária" : "CEP de atendimento"}
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Building2 />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-zipcode"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={9}
+                  placeholder="00000-000"
+                  {...register("realEstateProfile.zipCode")}
+                  value={realEstateZipCode}
+                  onChange={(event) => handleZipCodeChange(event.target.value)}
+                />
+              </InputGroup>
+            </Field>
+            {isFetchingCep ? (
+              <p className="text-xs text-muted-foreground">
+                Buscando endereço...
+              </p>
+            ) : null}
 
-        <Field>
-          <FieldLabel htmlFor="real-estate-city">Cidade</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Building2 />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-city"
-              type="text"
-              placeholder="São Paulo"
-              {...register("realEstateProfile.city")}
-            />
-          </InputGroup>
-        </Field>
+            <Field>
+              <FieldLabel htmlFor="real-estate-street">
+                Endereço da imobiliária
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Building2 />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-street"
+                  type="text"
+                  placeholder="Avenida Paulista"
+                  {...register("realEstateProfile.street")}
+                />
+              </InputGroup>
+            </Field>
 
-        <Field>
-          <FieldLabel htmlFor="real-estate-state">UF</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Building2 />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="real-estate-state"
-              type="text"
-              placeholder="SP"
-              maxLength={2}
-              {...register("realEstateProfile.state")}
-            />
-          </InputGroup>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <InputGroup>
-            <InputGroupAddon>
-              <Mail />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="email"
-              type="email"
-              placeholder="example@email.com"
-              required
-              {...register("email")}
-            />
-          </InputGroup>
-        </Field>
-        {errors.email && (
-          <FieldDescription className="text-rose-500">
-            {errors.email.message}
-          </FieldDescription>
-        )}
-        <Field>
-          <div className="flex items-center">
-            <FieldLabel htmlFor="password">Senha</FieldLabel>
+            <Field>
+              <FieldLabel htmlFor="real-estate-number">Número</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Building2 />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-number"
+                  type="text"
+                  placeholder="1471"
+                  {...register("realEstateProfile.number")}
+                />
+              </InputGroup>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="real-estate-complement">
+                Complemento
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Building2 />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-complement"
+                  type="text"
+                  placeholder="Conjunto 511"
+                  {...register("realEstateProfile.complement")}
+                />
+              </InputGroup>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="real-estate-neighborhood">Bairro</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Building2 />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-neighborhood"
+                  type="text"
+                  placeholder="Bela Vista"
+                  {...register("realEstateProfile.neighborhood")}
+                />
+              </InputGroup>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="real-estate-city">Cidade</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Building2 />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-city"
+                  type="text"
+                  placeholder="São Paulo"
+                  {...register("realEstateProfile.city")}
+                />
+              </InputGroup>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="real-estate-state">UF</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Building2 />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="real-estate-state"
+                  type="text"
+                  placeholder="SP"
+                  maxLength={2}
+                  {...register("realEstateProfile.state")}
+                />
+              </InputGroup>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon>
+                  <Mail />
+                </InputGroupAddon>
+                <InputGroupInput
+                  id="email"
+                  type="email"
+                  placeholder="example@email.com"
+                  required
+                  {...register("email")}
+                />
+              </InputGroup>
+            </Field>
+            {errors.email && (
+              <FieldDescription className="text-rose-500">
+                {errors.email.message}
+              </FieldDescription>
+            )}
+
+            <Field>
+              <div className="flex items-center">
+                <FieldLabel htmlFor="password">Senha</FieldLabel>
+              </div>
+              <PasswordInputGroup
+                id="password"
+                placeholder="********"
+                required
+                {...register("password")}
+              />
+            </Field>
+            {errors.password && (
+              <FieldDescription className="text-rose-500">
+                {errors.password.message}
+              </FieldDescription>
+            )}
           </div>
-          <PasswordInputGroup
-            id="password"
-            placeholder="********"
-            required
-            {...register("password")}
-          />
-        </Field>
-        {errors.password && (
-          <FieldDescription className="text-rose-500">
-            {errors.password.message}
-          </FieldDescription>
-        )}
+        </div>
+
         <Field>
           <Button type="submit">
             {isSubmitting ? (
@@ -575,7 +596,9 @@ export function RegisterForm({
             )}
           </Button>
         </Field>
+
         <FieldSeparator />
+
         <Field>
           <FieldDescription className="text-center text-foreground">
             Já possui uma conta?{" "}
